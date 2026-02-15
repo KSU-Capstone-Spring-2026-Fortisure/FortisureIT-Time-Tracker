@@ -1,0 +1,37 @@
+.client-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    background: white;
+    padding: 20px 30px;
+    border-radius: 10px;
+
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.client-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.client-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.client-logo {
+    height: 40px;
+}
+
+.client-name {
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.arrow {
+    font-size: 22px;
+    color: gray;
+}

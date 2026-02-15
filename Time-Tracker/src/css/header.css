@@ -1,8 +1,9 @@
 .header {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: center !important;
   gap: 20px;
+  background-color: #f4f4f4
 }
 
 .header h1 {
@@ -12,4 +13,5 @@
 .logo {
   position: absolute;
   left: 20px;
+  color: black;
 }
