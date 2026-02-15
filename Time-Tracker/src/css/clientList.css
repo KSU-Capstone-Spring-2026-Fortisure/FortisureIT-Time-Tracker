@@ -1,0 +1,20 @@
+.clientList-page {
+  min-height: 100vh;
+  width: 100%;
+  background-color: #f4f4f4;
+}
+
+.clientList-content {
+  width: 100%;
+  max-width: 1200px;
+  text-align: center;
+  padding: 20px;
+  margin: 0 auto;
+}
+
+.client-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 40px;
+  margin-top: 40px;
+}

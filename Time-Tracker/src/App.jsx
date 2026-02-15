@@ -1,16 +1,17 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Navbar from "./components/NavBar";
-import Home from "./pages/Home";
+import ProjectTracker from "./pages/ProjectTracker";
 import ClientList from "./pages/ClientList";
+import TimeTracker from "./pages/TimeTracker";
+import Contracts from "./pages/Contracts";
 
 function App() {
   return (
     <BrowserRouter>
-      <Navbar />
-
       <Routes>
-        <Route path="/" element={<Home />} />
-         <Route path="/client-list" element={<ClientList />} />
+        <Route index element={<ProjectTracker />} />
+        <Route path="clients/:mode" element={<ClientList />} />
+        <Route path="hourly/:clientId" element={<TimeTracker />} />
+        <Route path="contracts/:clientId" element={<Contracts />} />
       </Routes>
     </BrowserRouter>
   );

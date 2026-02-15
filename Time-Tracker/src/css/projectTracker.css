@@ -1,13 +1,13 @@
-.home-page {
+.projectTracker-page {
   min-height: 100vh;
   width: 100%;
   /* display: flex; */
   justify-content: center;
   align-items: center;
-  background-color: antiquewhite;
+  background-color: #f4f4f4;
 }
 
-.home-content {
+.projectTracker-content {
   width: 100%;
   max-width: 1200px;
   text-align: center;

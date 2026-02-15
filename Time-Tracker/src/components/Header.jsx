@@ -1,14 +1,14 @@
 import "../css/header.css";
 
-function Header() {
+function Header({ title }) {
   return (
     <header className="header">
       <div className="logo">
         {/* Replace with <img /> later */}
-        <strong>FORTISURE IT</strong> {/* I think the logo has the text, this is a placeholder */}
+        <strong>REPLACE WITH LOGO IMAGE</strong> {/* this is a placeholder */}
       </div>
 
-      <h1>Project Tracker</h1>
+      <h1>{title}</h1>
     </header>
   );
 }
