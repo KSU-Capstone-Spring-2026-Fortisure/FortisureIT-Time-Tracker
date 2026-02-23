@@ -1,0 +1,57 @@
+.bug-report-page {
+    padding: 40px;
+    background-color: #f4f4f4;
+    min-height: 100vh;
+}
+
+.header-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.back-btn {
+    font-size: 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.title-group {
+    margin-left: 20px;
+}
+
+.divider {
+    margin: 20px 0;
+    border-bottom: 1px solid #ddd;
+}
+
+.bug-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.bug-form label {
+    font-weight: 500;
+}
+
+.bug-form input,
+.bug-form select,
+.bug-form textarea {
+    padding: 8px;
+    font-size: 14px;
+}
+
+.submit-container {
+    margin-top: 20px;
+}
+
+.submit-btn {
+    background-color: #8b0000;
+    color: white;
+    padding: 10px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
