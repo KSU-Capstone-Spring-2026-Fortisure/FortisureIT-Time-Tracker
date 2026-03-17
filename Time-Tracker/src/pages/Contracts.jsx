@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import AddEditContractModal from "./shared/AddEditContractModal"
 import DeleteModal from "../components/DeleteModal";
