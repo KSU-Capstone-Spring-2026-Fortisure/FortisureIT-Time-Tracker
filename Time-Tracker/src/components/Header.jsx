@@ -1,14 +1,26 @@
+import { useNavigate } from "react-router-dom";
 import "../css/header.css";
+import logo from "../assets/logo.png";
 
-function Header({ title }) {
+function Header({ title, showBack = false }) {
+  const navigate = useNavigate();
+
   return (
     <header className="header">
-      <div className="logo">
-        {/* Replace with <img /> later */}
-        <strong>REPLACE WITH LOGO IMAGE</strong> {/* this is a placeholder */}
+      
+      {/* Left side */}
+      <div className="left-section">
+        {showBack && (
+          <button className="back-btn" onClick={() => navigate(-1)}>
+            ←
+          </button>
+        )}
+
+        <img src={logo} alt="Logo" className="logo-img" />
       </div>
 
-      <h1>{title}</h1>
+      {/* Center title */}
+      <h1 className="header-title">{title}</h1>
     </header>
   );
 }

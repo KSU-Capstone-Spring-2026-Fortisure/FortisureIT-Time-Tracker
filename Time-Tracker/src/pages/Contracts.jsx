@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import AddEditContractModal from "./shared/AddEditContractModal"
 import DeleteModal from "../components/DeleteModal";
+import Header from "../components/Header";
 
 import "../css/contracts.css";
 
@@ -84,13 +85,7 @@ function Contracts() {
     return (
         <div className="contracts">
 
-            {/* Header */}
-            <div className="header-row">
-                <button className="back-btn" onClick={() => navigate(-1)}>←</button>
-                <div className="title-group">
-                    <h1>Contracts</h1>
-                </div>
-            </div>
+            <Header title="Contracts" showBack />
 
             <div className="divider" />
 
