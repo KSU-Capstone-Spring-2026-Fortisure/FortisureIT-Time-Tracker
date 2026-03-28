@@ -29,7 +29,7 @@ function ClientList() {
 
     return (
         <div className="clientList">
-            <Header title="Client List" />
+            <Header title="Client List" showBack />
             <div className="divider" />
 
             <div className="clientList-page">

@@ -3,6 +3,7 @@ import AddEditContractModal from "./shared/AddEditContractModal"
 import DeleteModal from "../components/DeleteModal";
 import { useState, useEffect } from "react";
 import { getContracts, createContract, updateContract, deleteContract } from "../services/api";
+import Header from "../components/Header";
 
 import "../css/contracts.css";
 
@@ -125,13 +126,7 @@ function Contracts() {
     return (
         <div className="contracts">
 
-            {/* Header */}
-            <div className="header-row">
-                <button className="back-btn" onClick={() => navigate(-1)}>←</button>
-                <div className="title-group">
-                    <h1>Contracts</h1>
-                </div>
-            </div>
+            <Header title="Contracts" showBack />
 
             <div className="divider" />
 
