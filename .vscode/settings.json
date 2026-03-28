@@ -2,5 +2,7 @@
     "appService.zipIgnorePattern": [
         "node_modules{,/**}",
         ".vscode{,/**}"
-    ]
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/dd245b47-2d46-4fb4-ada1-b7a48a16ee46/resourceGroups/Time-Tracker-API_group/providers/Microsoft.Web/sites/Time-Tracker-API",
+    "appService.deploySubpath": "API Setup"
 }
