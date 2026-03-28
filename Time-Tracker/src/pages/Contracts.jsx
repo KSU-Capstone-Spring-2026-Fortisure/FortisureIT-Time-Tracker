@@ -1,34 +1,55 @@
-import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import AddEditContractModal from "./shared/AddEditContractModal"
 import DeleteModal from "../components/DeleteModal";
+import { useState, useEffect } from "react";
+import { getContracts, createContract, updateContract, deleteContract } from "../services/api";
 
 import "../css/contracts.css";
 
 function Contracts() {
+    //For API -- doesnt work rn
+    // useEffect(() => {
+    //     fetch("https://time-tracker-api-c9bvg4ayekdkcef0.eastus-01.azurewebsites.net/contracts")
+    //         .then(res => res.json())
+    //         .then(data => setContracts(data));
+    // }, []);
+
     const navigate = useNavigate();
     const { clientId } = useParams();
+    //API Stuff for data
+    const [contracts, setContracts] = useState([]);
+    useEffect(() => {
+        loadContracts();
+    }, []);
 
-    const [contracts, setContracts] = useState([
-        {
-            id: 1,
-            name: "24.12-B Team Creation Portal",
-            value: "$$$",
-            status: "Completed",
-            start: "2025-02-04",
-            end: "2025-04-03",
-            owner: "Employee",
-        },
-        {
-            id: 2,
-            name: "25.03-A All-Star Upload Refactor",
-            value: "$$$",
-            status: "Completed",
-            start: "2025-05-01",
-            end: "2025-06-01",
-            owner: "Employee",
+    const loadContracts = async () => {
+        try {
+            const data = await getContracts();
+            setContracts(data);
+        } catch (error) {
+            console.error(error);
         }
-    ]);
+    };
+    // const [contracts, setContracts] = useState([
+    //     {
+    //         id: 1,
+    //         name: "24.12-B Team Creation Portal",
+    //         value: "$$$",
+    //         status: "Completed",
+    //         start: "2025-02-04",
+    //         end: "2025-04-03",
+    //         owner: "Employee",
+    //     },
+    //     {
+    //         id: 2,
+    //         name: "25.03-A All-Star Upload Refactor",
+    //         value: "$$$",
+    //         status: "Completed",
+    //         start: "2025-05-01",
+    //         end: "2025-06-01",
+    //         owner: "Employee",
+    //     }
+    // ]);
 
     const [showAddEdit, setShowAddEdit] = useState(false);
     const [editingContract, setEditingContract] = useState(null);
@@ -59,27 +80,47 @@ function Contracts() {
     };
 
     // Save
-    const handleSave = (data) => {
-        if (data.id) {
-            setContracts(contracts.map(c => c.id === data.id ? data : c));
-        } else {
-            setContracts([
-                ...contracts,
-                { ...data, id: Date.now() }
-            ]);
+    const handleSave = async (data) => {
+        try {
+            if (data.id) {
+                await updateContract(data.id, data);
+            } else {
+                await createContract(data);
+            }
+            loadContracts(); // reload from backend
+        } catch (error) {
+            console.error(error);
         }
     };
+    // const handleSave = (data) => {
+    //     if (data.id) {
+    //         setContracts(contracts.map(c => c.id === data.id ? data : c));
+    //     } else {
+    //         setContracts([
+    //             ...contracts,
+    //             { ...data, id: Date.now() }
+    //         ]);
+    //     }
+    // };
 
     // Delete
     const handleDelete = (contract) => {
         setContractToDelete(contract);
         setShowDeleteModal(true);
     };
-
-    const confirmDelete = () => {
-        setContracts(contracts.filter(c => c.id !== contractToDelete.id));
-        setShowDeleteModal(false);
+    const confirmDelete = async () => {
+        try {
+            await deleteContract(contractToDelete.id);
+            loadContracts();
+            setShowDeleteModal(false);
+        } catch (error) {
+            console.error(error);
+        }
     };
+    // const confirmDelete = () => {
+    //     setContracts(contracts.filter(c => c.id !== contractToDelete.id));
+    //     setShowDeleteModal(false);
+    // };
 
     return (
         <div className="contracts">
