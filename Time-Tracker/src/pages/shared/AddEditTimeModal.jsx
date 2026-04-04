@@ -4,26 +4,28 @@ import "../../css/modals/modal.css";
 function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
   const [formData, setFormData] = useState({
     id: "",
-    clientName: "",
-    dateWorked: "",
-    timeWorked: "",
-    category: "",
-    billable: false,
-    notes: ""
+    work_date: "",
+    hours_worked: "",
+    is_billable: false,
+    notes: "",
   });
 
   useEffect(() => {
     if (record) {
-      setFormData(record);
+      setFormData({
+        id: record.id || "",
+        work_date: record.work_date ? record.work_date.split("T")[0] : "",
+        hours_worked: record.hours_worked || "",
+        is_billable: record.is_billable || false,
+        notes: record.notes || "",
+      });
     } else {
       setFormData({
         id: "",
-        clientName: "",
-        dateWorked: "",
-        timeWorked: "",
-        category: "",
-        billable: false,
-        notes: ""
+        work_date: "",
+        hours_worked: "",
+        is_billable: false,
+        notes: "",
       });
     }
   }, [record]);
@@ -33,10 +35,10 @@ function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value
-    });
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   const handleSubmit = () => {
@@ -53,47 +55,49 @@ function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
 
         <div className="form-grid">
           <div className="form-row">
-            <label>Client Name</label>
-            <input name="clientName" value={formData.clientName} onChange={handleChange} disabled={isViewMode} />
+            <label>Date Worked</label>
+            <input
+              type="date"
+              name="work_date"
+              value={formData.work_date}
+              onChange={handleChange}
+              disabled={isViewMode}
+            />
           </div>
 
-          <div>
-            <div className="form-row">
-              <label>Date Worked</label>
-              <input type="date" name="dateWorked" value={formData.dateWorked} onChange={handleChange} disabled={isViewMode} />
-            </div>
+          <div className="form-row">
+            <label>Hours Worked</label>
+            <input
+              type="number"
+              name="hours_worked"
+              value={formData.hours_worked}
+              onChange={handleChange}
+              disabled={isViewMode}
+            />
           </div>
 
-          <div>
-            <div className="form-row">
-              <label>Time Worked</label>
-              <input type="number" name="timeWorked" value={formData.timeWorked} onChange={handleChange} disabled={isViewMode} />
+          <div className="form-row">
+            <label>Billable</label>
+            <div className="checkbox-wrapper">
+              <input
+                type="checkbox"
+                name="is_billable"
+                checked={formData.is_billable}
+                onChange={handleChange}
+                disabled={isViewMode}
+              />
             </div>
-          </div>
-
-          <div>
-            <div className="form-row">
-              <label>Category</label>
-              <input name="category" value={formData.category} onChange={handleChange} disabled={isViewMode} />
-            </div>
-          </div>
-
-          <div>
-            <div className="form-row">
-              <label>Billable</label>
-              <div className="checkbox-wrapper">
-                <input type="checkbox" name="billable" checked={formData.billable} onChange={handleChange} disabled={isViewMode} />
-              </div>
-            </div>
-
           </div>
         </div>
 
-        <div>
-          <div className="form-row">
-            <label>Notes</label>
-            <textarea name="notes" value={formData.notes} onChange={handleChange} disabled={isViewMode} />
-          </div>
+        <div className="form-row">
+          <label>Notes</label>
+          <textarea
+            name="notes"
+            value={formData.notes}
+            onChange={handleChange}
+            disabled={isViewMode}
+          />
         </div>
 
         {!isViewMode && (
@@ -113,7 +117,7 @@ function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
           </button>
         )}
       </div>
-    </div >
+    </div>
   );
 }
 

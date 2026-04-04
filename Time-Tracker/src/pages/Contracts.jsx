@@ -1,56 +1,37 @@
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import AddEditContractModal from "./shared/AddEditContractModal"
-import DeleteModal from "../components/DeleteModal";
-import { useState, useEffect } from "react";
-import { getContracts, createContract, updateContract, deleteContract } from "../services/api";
 import Header from "../components/Header";
+import DeleteModal from "../components/DeleteModal";
+import ConfirmModal from "../components/ConfirmModal";
+import ResultModal from "../components/ResultModal";
+import AddEditContractModal from "./shared/AddEditContractModal";
+import {
+    getContracts,
+    getUsers,
+    createContract,
+    updateContract,
+    softDeleteContract,
+} from "../services/api";
 
 import "../css/contracts.css";
 
+const formatDate = (value) => {
+    if (!value) return "";
+    const d = new Date(value);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}/${mm}/${dd}`;
+};
+
 function Contracts() {
-    //For API -- doesnt work rn
-    // useEffect(() => {
-    //     fetch("https://time-tracker-api-c9bvg4ayekdkcef0.eastus-01.azurewebsites.net/contracts")
-    //         .then(res => res.json())
-    //         .then(data => setContracts(data));
-    // }, []);
-
-    const navigate = useNavigate();
     const { clientId } = useParams();
-    //API Stuff for data
-    const [contracts, setContracts] = useState([]);
-    useEffect(() => {
-        loadContracts();
-    }, []);
+    const navigate = useNavigate();
 
-    const loadContracts = async () => {
-        try {
-            const data = await getContracts();
-            setContracts(data);
-        } catch (error) {
-            console.error(error);
-        }
-    };
-    // const [contracts, setContracts] = useState([
-    //     {
-    //         id: 1,
-    //         name: "24.12-B Team Creation Portal",
-    //         value: "$$$",
-    //         status: "Completed",
-    //         start: "2025-02-04",
-    //         end: "2025-04-03",
-    //         owner: "Employee",
-    //     },
-    //     {
-    //         id: 2,
-    //         name: "25.03-A All-Star Upload Refactor",
-    //         value: "$$$",
-    //         status: "Completed",
-    //         start: "2025-05-01",
-    //         end: "2025-06-01",
-    //         owner: "Employee",
-    //     }
-    // ]);
+    const [contracts, setContracts] = useState([]);
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
 
     const [showAddEdit, setShowAddEdit] = useState(false);
     const [editingContract, setEditingContract] = useState(null);
@@ -59,123 +40,206 @@ function Contracts() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [contractToDelete, setContractToDelete] = useState(null);
 
-    // Add
+    const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+    const [resultMessage, setResultMessage] = useState("");
+
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const loadData = async () => {
+        setLoading(true);
+        setError("");
+
+        try {
+            const [contractsData, usersData] = await Promise.all([
+                getContracts(),
+                getUsers(),
+            ]);
+
+            console.log("Contracts API:", contractsData);
+            console.log("Users API:", usersData);
+
+            // ✅ Ensure arrays
+            const safeContracts = Array.isArray(contractsData) ? contractsData : [];
+            const safeUsers = Array.isArray(usersData) ? usersData : [];
+
+            const filteredContracts = safeContracts.filter(
+                (c) =>
+                    String(c.client_id) === String(clientId) &&
+                    c.is_deleted !== true
+            );
+
+            setContracts(filteredContracts);
+            setUsers(safeUsers);
+        } catch (err) {
+            console.error("Failed to load contracts:", err);
+            setError("Unable to load contracts. Please try again.");
+            setContracts([]);
+            setUsers([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (error) {
+        return (
+            <div className="contracts-page">
+                <Header title="Contracts" showBack />
+                <div className="divider" />
+
+                <div className="error-box">
+                    <p>{error}</p>
+                    <button onClick={loadData}>Retry</button>
+                </div>
+            </div>
+        );
+    }
+
+    const getOwnerName = (ownerId) => {
+        const user = users.find((u) => String(u.id) === String(ownerId));
+        return user ? user.name || user.full_name || `User ${ownerId}` : ownerId;
+    };
+
     const handleAdd = () => {
         setEditingContract(null);
         setIsViewMode(false);
         setShowAddEdit(true);
     };
 
-    // Edit
-    const handleEdit = (contract) => {
-        setEditingContract(contract);
-        setIsViewMode(false);
-        setShowAddEdit(true);
-    };
-
-    // View
     const handleView = (contract) => {
         setEditingContract(contract);
         setIsViewMode(true);
         setShowAddEdit(true);
     };
 
-    // Save
+    const handleEdit = (contract) => {
+        setEditingContract(contract);
+        setIsViewMode(false);
+        setShowAddEdit(true);
+    };
+
     const handleSave = async (data) => {
         try {
-            if (data.id) {
-                await updateContract(data.id, data);
+            const payload = {
+                client_id: Number(clientId),
+                contract_name: data.contract_name,
+                description: data.description,
+                total_value: data.total_value,
+                start_date: data.start_date,
+                end_date: data.end_date,
+                created_by: 1,
+            };
+
+            if (editingContract && editingContract.id) {
+                await updateContract(editingContract.id, payload);
             } else {
-                await createContract(data);
+                await createContract(payload);
             }
-            loadContracts(); // reload from backend
-        } catch (error) {
-            console.error(error);
+
+            await loadData();
+            setResultMessage("Contract saved successfully.");
+        } catch (err) {
+            console.error("Failed to save contract:", err);
+            setError("Unable to save contract. Please try again.");
         }
     };
-    // const handleSave = (data) => {
-    //     if (data.id) {
-    //         setContracts(contracts.map(c => c.id === data.id ? data : c));
-    //     } else {
-    //         setContracts([
-    //             ...contracts,
-    //             { ...data, id: Date.now() }
-    //         ]);
-    //     }
-    // };
 
-    // Delete
     const handleDelete = (contract) => {
         setContractToDelete(contract);
         setShowDeleteModal(true);
     };
+
     const confirmDelete = async () => {
         try {
-            await deleteContract(contractToDelete.id);
-            loadContracts();
+            await softDeleteContract(contractToDelete.id);
+            await loadData();
+            setResultMessage("Contract deleted.");
+        } catch (err) {
+            console.error("Failed to delete contract:", err);
+            setError("Unable to delete contract. Please try again.");
+        } finally {
             setShowDeleteModal(false);
-        } catch (error) {
-            console.error(error);
         }
     };
-    // const confirmDelete = () => {
-    //     setContracts(contracts.filter(c => c.id !== contractToDelete.id));
-    //     setShowDeleteModal(false);
-    // };
+
+    const handleSubmitContracts = async () => {
+        setShowSubmitConfirm(false);
+        setResultMessage("Contracts submitted.");
+    };
 
     return (
-        <div className="contracts">
-
+        <div className="contracts-page">
             <Header title="Contracts" showBack />
 
             <div className="divider" />
 
-            {/* Table */}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Contract</th>
-                        <th>Value</th>
-                        <th>Status</th>
-                        <th>Start</th>
-                        <th>End</th>
-                        <th>Owner</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {contracts.map(contract => (
-                        <tr key={contract.id}>
-                            <td>{contract.name}</td>
-                            <td>{contract.value}</td>
-                            <td>{contract.status}</td>
-                            <td>{contract.start}</td>
-                            <td>{contract.end}</td>
-                            <td>{contract.owner}</td>
-                            <td className="icon-cell">
-                                <span className="icon" onClick={() => handleView(contract)}>📄</span>
-                                <span className="icon" onClick={() => handleEdit(contract)}>✏️</span>
-                                <span className="icon" onClick={() => handleDelete(contract)}>❌</span>
-                                <span
-                                    className="icon"
-                                    onClick={() => navigate(`/contracts/${clientId}/milestones/${contract.id}`)}
-                                >
-                                    📋
-                                </span>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            {loading && <p>Loading contracts...</p>}
 
-            {/* Add */}
-            <div className="add-container">
-                <button className="add-btn" onClick={handleAdd}>
-                    Add
-                </button>
-            </div>
+            {!loading && (
+                <>
+                    <div className="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Contract Name</th>
+                                    <th>Total Value</th>
+                                    <th>Owner</th>
+                                    <th>Start</th>
+                                    <th>End</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {contracts.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="6">No contracts found.</td>
+                                    </tr>
+                                ) : (
+                                    contracts.map((c) => (
+                                        <tr key={c.id}>
+                                            <td>{c.contract_name}</td>
+                                            <td>{c.total_value}</td>
+                                            <td>{getOwnerName(c.created_by)}</td>
+                                            <td>{formatDate(c.start_date)}</td>
+                                            <td>{formatDate(c.end_date)}</td>
+                                            <td className="icon-cell">
+                                                <span className="icon" onClick={() => handleView(c)}>📄</span>
+                                                <span className="icon" onClick={() => handleEdit(c)}>✏️</span>
+                                                <span className="icon" onClick={() => handleDelete(c)}>❌</span>
+                                                <span
+                                                    className="icon"
+                                                    onClick={() =>
+                                                        navigate(`/contracts/${clientId}/milestones/${c.id}`)
+                                                    }
+                                                >
+                                                    📌
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
 
-            {/* Add/Edit/View Modal */}
+                    <div className="add-container">
+                        <button className="add-btn" onClick={handleAdd}>
+                            Add
+                        </button>
+                    </div>
+
+                    <div className="submit-container">
+                        <button
+                            className="submit-btn-main"
+                            onClick={() => setShowSubmitConfirm(true)}
+                        >
+                            Submit
+                        </button>
+                    </div>
+                </>
+            )}
+
             {showAddEdit && (
                 <AddEditContractModal
                     isOpen={showAddEdit}
@@ -186,7 +250,6 @@ function Contracts() {
                 />
             )}
 
-            {/* Delete Modal */}
             {showDeleteModal && (
                 <DeleteModal
                     isOpen={showDeleteModal}
@@ -194,6 +257,22 @@ function Contracts() {
                     onCancel={() => setShowDeleteModal(false)}
                 />
             )}
+
+            {showSubmitConfirm && (
+                <ConfirmModal
+                    message={"Submit contracts for processing?"}
+                    onConfirm={handleSubmitContracts}
+                    onCancel={() => setShowSubmitConfirm(false)}
+                />
+            )}
+
+            <ResultModal
+                message={resultMessage}
+                onClose={() => {
+                    setResultMessage("");
+                    loadData();
+                }}
+            />
         </div>
     );
 }

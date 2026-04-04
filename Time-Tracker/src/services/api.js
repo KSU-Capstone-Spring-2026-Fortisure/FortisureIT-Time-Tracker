@@ -1,42 +1,88 @@
-// const API_BASE = "http://localhost:5000"; // update with backend localhost later
-
-// export async function Example() {
-//     const result = await fetch(`${API_BASE}/example`);
-//     return result.json();
-// }
-
 const BASE_URL = "https://time-tracker-api-c9bvg4ayekdkcef0.eastus-01.azurewebsites.net";
 
-// GET contracts
-export const getContracts = async () => {
-  const response = await fetch(`${BASE_URL}/contracts`);
-  if (!response.ok) throw new Error("Failed to fetch contracts");
-  return response.json();
-};
+async function safeFetch(url, options = {}) {
+  try {
+    const res = await fetch(url, options);
 
-// CREATE contract
-export const createContract = async (contract) => {
-  const response = await fetch(`${BASE_URL}/contracts`, {
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `Request failed: ${res.status}`);
+    }
+
+    return res.json();
+  } catch (err) {
+    console.error("API Error:", err);
+    throw err;
+  }
+}
+
+// ------------------------------
+// GENERIC HELPERS
+// ------------------------------
+
+function post(endpoint, body) {
+  return safeFetch(`${BASE_URL}/${endpoint}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(contract),
+    body: JSON.stringify(body),
   });
-  return response.json();
-};
+}
 
-// UPDATE contract
-export const updateContract = async (id, contract) => {
-  const response = await fetch(`${BASE_URL}/contracts/${id}`, {
+function put(endpoint, body) {
+  return safeFetch(`${BASE_URL}/${endpoint}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(contract),
+    body: JSON.stringify(body),
   });
-  return response.json();
-};
+}
 
-// DELETE contract
-export const deleteContract = async (id) => {
-  await fetch(`${BASE_URL}/contracts/${id}`, {
-    method: "DELETE",
+// ------------------------------
+// GET
+// ------------------------------
+
+export const getUsers = () => safeFetch(`${BASE_URL}/users`);
+export const getClients = () => safeFetch(`${BASE_URL}/clients`);
+export const getContracts = () => safeFetch(`${BASE_URL}/contracts`);
+export const getMilestones = () => safeFetch(`${BASE_URL}/milestones`);
+export const getHours = () => safeFetch(`${BASE_URL}/hours`);
+export const getBugs = () => safeFetch(`${BASE_URL}/requests`);
+
+// ------------------------------
+// CREATE
+// ------------------------------
+
+export const createContract = (data) => post("contracts", data);
+export const createMilestone = (data) => post("milestones", data);
+export const createHourEntry = (data) => post("hours", data);
+
+export const createSubmission = (data) => post("submissions", data);
+export const createSubmissionItem = (data) => post("submission-items", data);
+
+export const createBug = (data) =>
+  post("requests", {
+    user_id: 1,
+    request_type: "Bug",
+    title: data.title,
+    description: data.description,
   });
-};
+
+// ------------------------------
+// UPDATE
+// ------------------------------
+
+export const updateContract = (id, data) => put(`contracts/${id}`, data);
+export const updateMilestone = (id, data) => put(`milestones/${id}`, data);
+export const updateHourEntry = (id, data) => put(`hours/${id}`, data);
+
+// ------------------------------
+// SOFT DELETE
+// ------------------------------
+
+export const softDeleteContract = (id) =>
+  put(`contracts/${id}/delete`);
+
+export const softDeleteMilestone = (id) =>
+  put(`milestones/${id}/delete`);
+
+export const softDeleteHour = (id) =>
+  put(`hours/${id}/delete`);

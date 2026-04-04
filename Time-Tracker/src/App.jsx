@@ -12,12 +12,31 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route index element={<ProjectTracker />} />
+
+        {/* Client selection */}
         <Route path="clients/:mode" element={<ClientList />} />
+
+        {/* Hourly Tracking */}
         <Route path="hourly/:clientId" element={<HourlyTracking />} />
+
+        {/* Contracts */}
         <Route path="contracts/:clientId" element={<Contracts />} />
-        <Route path="contracts/:clientId/milestones/:contractId" element={<Milestones />} />
-        <Route path="contracts/:clientId/milestones/:contractId/add" element={<MilestoneForm />} />
-        <Route path="contracts/:clientId/milestones/:contractId/edit/:milestoneId" element={<MilestoneForm />} />
+
+        {/* Milestones */}
+        <Route
+          path="contracts/:clientId/milestones/:contractId"
+          element={<Milestones />}
+        />
+        <Route
+          path="contracts/:clientId/milestones/:contractId/add"
+          element={<MilestoneForm />}
+        />
+        <Route
+          path="contracts/:clientId/milestones/:contractId/edit/:milestoneId"
+          element={<MilestoneForm />}
+        />
+
+        {/* Bugs & Features */}
         <Route path="bugs-and-features" element={<BugFeatureRequest />} />
       </Routes>
     </BrowserRouter>

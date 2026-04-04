@@ -1,73 +1,116 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useLocation } from "react-router-dom";
-import "../../css/modals/milestoneForm.css"
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import "../../css/modals/milestoneForm.css";
+import { createMilestone, updateMilestone } from "../../services/api";
 
-function MilestoneForm({ initialData }) {
-    const navigate = useNavigate();
-    const { clientId, contractId, milestoneId } = useParams();
-    const location = useLocation();
-    const saveHandler = location.state?.onSave;
+function MilestoneForm() {
+  const navigate = useNavigate();
+  const { clientId, contractId, milestoneId } = useParams();
+  const location = useLocation();
+  const initialData = location.state?.initialData;
 
-    const [form, setForm] = useState({
-        name: "",
-        value: "",
-        assignee: "",
-        estBillDate: "",
-        approved: false
-    });
+  const [form, setForm] = useState({
+    milestone_name: "",
+    description: "",
+    due_date: "",
+    amount: "",
+  });
 
-    useEffect(() => {
-        if (initialData) {
-            setForm(initialData);
-        }
-    }, [initialData]);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
 
-    const update = (field, value) => {
-        setForm({ ...form, [field]: value });
-    };
+  useEffect(() => {
+    if (initialData) {
+      setForm({
+        milestone_name: initialData.milestone_name || "",
+        description: initialData.description || "",
+        due_date: initialData.due_date
+          ? initialData.due_date.split("T")[0]
+          : "",
+        amount: initialData.amount || "",
+      });
+    }
+  }, [initialData]);
 
-    const handleSubmit = () => {
-        if (saveHandler) {
-            saveHandler(form);
-        }
-        navigate(`/contracts/${clientId}/milestones/${contractId}`);
-    };
+  const update = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
 
-    return (
-        <div className="milestone-form-page">
+  const handleSubmit = async () => {
+    try {
+      setSaving(true);
+      setSaveMessage("");
 
-            <div className="header-row">
-                <button className="back-btn" onClick={() => navigate(-1)}>←</button>
-                <h1>{milestoneId ? "Edit Milestone" : "Add Milestone"}</h1>
-            </div>
+      const payload = {
+        contract_id: Number(contractId),
+        milestone_name: form.milestone_name,
+        description: form.description,
+        due_date: form.due_date,
+        amount: form.amount,
+      };
 
-            <div className="divider" />
+      if (milestoneId) {
+        await updateMilestone(milestoneId, payload);
+      } else {
+        await createMilestone(payload);
+      }
 
-            <div className="form-container">
-                <label>Milestone Name</label>
-                <input value={form.name} onChange={e => update("name", e.target.value)} />
+      setSaveMessage("Milestone saved.");
+      navigate(`/contracts/${clientId}/milestones/${contractId}`);
+    } catch (err) {
+      console.error("Failed to save milestone:", err);
+      setSaveMessage("Unable to save milestone. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-                <label>Value</label>
-                <input type = "number" value={form.value} onChange={e => update("value", e.target.value)} />
+  return (
+    <div className="milestone-form-page">
+      <div className="header-row">
+        <button className="back-btn" onClick={() => navigate(-1)}>
+          ←
+        </button>
+        <h1>{milestoneId ? "Edit Milestone" : "Add Milestone"}</h1>
+      </div>
 
-                <label>Assignee</label>
-                <input  value={form.assignee} onChange={e => update("assignee", e.target.value)} />
+      <div className="divider" />
 
-                <label>Est Bill Date</label>
-                <input type="date" value={form.estBillDate} onChange={e => update("estBillDate", e.target.value)} />
+      <div className="form-container">
+        <label>Milestone Name</label>
+        <input
+          value={form.milestone_name}
+          onChange={(e) => update("milestone_name", e.target.value)}
+        />
 
-                <label>
-                    Approved {" "}
-                    <input type="checkbox" checked={form.approved} onChange={e => update("approved", e.target.checked)} />
-                </label>
+        <label>Description</label>
+        <textarea
+          value={form.description}
+          onChange={(e) => update("description", e.target.value)}
+        />
 
-                <button className="submit-btn" onClick={handleSubmit}>
-                    Save
-                </button>
-            </div>
-        </div>
-    );
+        <label>Due Date</label>
+        <input
+          type="date"
+          value={form.due_date}
+          onChange={(e) => update("due_date", e.target.value)}
+        />
+
+        <label>Amount</label>
+        <input
+          type="number"
+          value={form.amount}
+          onChange={(e) => update("amount", e.target.value)}
+        />
+
+        {saveMessage && <p className="save-message">{saveMessage}</p>}
+
+        <button className="submit-btn" onClick={handleSubmit} disabled={saving}>
+          {saving ? "Saving..." : "Save"}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default MilestoneForm;
