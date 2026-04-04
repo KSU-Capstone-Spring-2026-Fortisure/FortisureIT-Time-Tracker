@@ -63,6 +63,7 @@ export const createBug = (data) =>
     user_id: 1,
     request_type: "Bug",
     title: data.title,
+    severity: data.severity,
     description: data.description,
   });
 
@@ -74,15 +75,18 @@ export const updateContract = (id, data) => put(`contracts/${id}`, data);
 export const updateMilestone = (id, data) => put(`milestones/${id}`, data);
 export const updateHourEntry = (id, data) => put(`hours/${id}`, data);
 
+// Update Bug/Feature Request
+export const updateBug = (id, data) =>
+  put(`requests/${id}`, {
+    title: data.title,
+    severity: data.severity,
+    description: data.description,
+  });
+
 // ------------------------------
 // SOFT DELETE
 // ------------------------------
 
-export const softDeleteContract = (id) =>
-  put(`contracts/${id}/delete`);
-
-export const softDeleteMilestone = (id) =>
-  put(`milestones/${id}/delete`);
-
-export const softDeleteHour = (id) =>
-  put(`hours/${id}/delete`);
+export const softDeleteContract = (id) => put(`contracts/${id}/delete`);
+export const softDeleteMilestone = (id) => put(`milestones/${id}/delete`);
+export const softDeleteHour = (id) => put(`hours/${id}/delete`);

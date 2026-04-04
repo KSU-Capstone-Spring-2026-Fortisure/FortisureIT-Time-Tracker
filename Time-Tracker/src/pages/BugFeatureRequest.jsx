@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import ResultModal from "../components/ResultModal";
-import { getBugs, createBug } from "../services/api";
+import {
+  getBugs,
+  createBug,
+  updateBug,   // ✅ NEW
+} from "../services/api";
 import "../css/bugfeaturerequest.css";
 
 function BugFeatureRequest() {
@@ -14,7 +18,11 @@ function BugFeatureRequest() {
     severity: "Low",
     description: "",
   });
+
   const [showForm, setShowForm] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [isViewMode, setIsViewMode] = useState(false);
+
   const [resultMessage, setResultMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -26,9 +34,10 @@ function BugFeatureRequest() {
   const loadBugs = async () => {
     setLoading(true);
     setError("");
+
     try {
       const data = await getBugs();
-      setItems(data);
+      setItems(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to load bugs:", err);
       setError("Unable to load requests. Please try again.");
@@ -55,13 +64,58 @@ function BugFeatureRequest() {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  // -----------------------------
+  // ADD / EDIT / VIEW HANDLERS
+  // -----------------------------
+
+  const handleAdd = () => {
+    setEditingItem(null);
+    setIsViewMode(false);
+    setForm({ title: "", severity: "Low", description: "" });
+    setShowForm(true);
+  };
+
+  const handleEdit = (item) => {
+    setEditingItem(item);
+    setIsViewMode(false);
+    setForm({
+      title: item.title,
+      severity: item.severity,
+      description: item.description,
+    });
+    setShowForm(true);
+  };
+
+  const handleView = (item) => {
+    setEditingItem(item);
+    setIsViewMode(true);
+    setForm({
+      title: item.title,
+      severity: item.severity,
+      description: item.description,
+    });
+    setShowForm(true);
+  };
+
+  // -----------------------------
+  // SAVE HANDLER
+  // -----------------------------
+
   const handleSubmit = async () => {
     try {
-      const created = await createBug(form);
-      setItems((prev) => [...prev, created]);
-      setForm({ title: "", severity: "Low", description: "" });
+      if (editingItem) {
+        // UPDATE
+        await updateBug(editingItem.id, form);
+      } else {
+        // CREATE
+        const created = await createBug(form);
+        setItems((prev) => [...prev, created]);
+      }
+
+      await loadBugs();
       setShowForm(false);
-      setResultMessage("Request submitted.");
+      setEditingItem(null);
+      setResultMessage("Request saved successfully.");
     } catch (err) {
       console.error("Failed to submit request:", err);
       setError("Unable to submit request. Please try again.");
@@ -88,6 +142,7 @@ function BugFeatureRequest() {
                     <th>Title</th>
                     <th>Severity</th>
                     <th>Description</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -96,25 +151,31 @@ function BugFeatureRequest() {
                       <td>{i.title}</td>
                       <td>{i.severity}</td>
                       <td>{i.description}</td>
+                      <td className="icon-cell">
+                        <span className="icon" onClick={() => handleView(i)}>📄</span>
+                        <span className="icon" onClick={() => handleEdit(i)}>✏️</span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
               <div className="add-container">
-                <button className="add-btn" onClick={() => setShowForm(true)}>
+                <button className="add-btn" onClick={handleAdd}>
                   Add
                 </button>
               </div>
 
               {showForm && (
                 <>
-                  <h3>New Request</h3>
+                  <h3>{isViewMode ? "View Request" : editingItem ? "Edit Request" : "New Request"}</h3>
+
                   <div className="form-grid">
                     <div className="form-row">
                       <label>Title</label>
                       <input
                         value={form.title}
+                        disabled={isViewMode}
                         onChange={(e) => update("title", e.target.value)}
                       />
                     </div>
@@ -123,6 +184,7 @@ function BugFeatureRequest() {
                       <label>Severity</label>
                       <select
                         value={form.severity}
+                        disabled={isViewMode}
                         onChange={(e) => update("severity", e.target.value)}
                       >
                         <option>Low</option>
@@ -136,22 +198,23 @@ function BugFeatureRequest() {
                       <textarea
                         rows="4"
                         value={form.description}
-                        onChange={(e) =>
-                          update("description", e.target.value)
-                        }
+                        disabled={isViewMode}
+                        onChange={(e) => update("description", e.target.value)}
                       />
                     </div>
                   </div>
 
                   <div className="modal-buttons">
-                    <button className="btn-primary" onClick={handleSubmit}>
-                      Submit
-                    </button>
+                    {!isViewMode && (
+                      <button className="btn-primary" onClick={handleSubmit}>
+                        Save
+                      </button>
+                    )}
                     <button
                       className="btn-secondary"
                       onClick={() => setShowForm(false)}
                     >
-                      Cancel
+                      {isViewMode ? "Close" : "Cancel"}
                     </button>
                   </div>
                 </>
@@ -165,7 +228,7 @@ function BugFeatureRequest() {
         message={resultMessage}
         onClose={() => {
           setResultMessage("");
-          navigate("/"); // ProjectTracker
+          navigate("/");
         }}
       />
     </div>

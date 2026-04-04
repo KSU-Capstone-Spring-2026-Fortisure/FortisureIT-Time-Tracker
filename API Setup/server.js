@@ -7,7 +7,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// PostgreSQL connection
+// ---------------------------------------------
+// PostgreSQL Connection
+// ---------------------------------------------
 const pool = new Pool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -17,12 +19,12 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
-// ✅ FIXED: Always return arrays
+// ---------------------------------------------
+// Helper to run queries
+// ---------------------------------------------
 async function runQuery(res, sql, params = []) {
   try {
     const result = await pool.query(sql, params);
-    console.log("SQL:", sql, params);
-
     res.json(result.rows);
   } catch (err) {
     console.error("Database error:", err);
@@ -30,65 +32,69 @@ async function runQuery(res, sql, params = []) {
   }
 }
 
-// ------------------------------
+// ---------------------------------------------
 // TEST ROUTE
-// ------------------------------
+// ---------------------------------------------
 app.get("/", (req, res) => {
   res.send("Project Tracker API Running");
 });
 
-// ------------------------------
+// ---------------------------------------------
 // GET ROUTES
-// ------------------------------
+// ---------------------------------------------
+app.get("/users", (req, res) => runQuery(res, "SELECT * FROM users"));
+app.get("/clients", (req, res) => runQuery(res, "SELECT * FROM clients"));
+app.get("/contracts", (req, res) =>
+  runQuery(res, "SELECT * FROM contracts WHERE is_deleted IS NOT TRUE")
+);
+app.get("/milestones", (req, res) =>
+  runQuery(res, "SELECT * FROM contract_milestones WHERE is_deleted IS NOT TRUE")
+);
+app.get("/hours", (req, res) =>
+  runQuery(res, "SELECT * FROM hourly_entries WHERE is_deleted IS NOT TRUE")
+);
+app.get("/requests", (req, res) =>
+  runQuery(res, "SELECT * FROM bug_feature_requests")
+);
 
-app.get("/users", (req, res) => {
-  runQuery(res, "SELECT * FROM users");
-});
-
-app.get("/clients", (req, res) => {
-  runQuery(res, "SELECT * FROM clients");
-});
-
-app.get("/contracts", (req, res) => {
-  runQuery(res, "SELECT * FROM contracts WHERE is_deleted IS NOT TRUE");
-});
-
-app.get("/milestones", (req, res) => {
-  runQuery(res, "SELECT * FROM contract_milestones WHERE is_deleted IS NOT TRUE");
-});
-
-app.get("/hours", (req, res) => {
-  runQuery(res, "SELECT * FROM hourly_entries WHERE is_deleted IS NOT TRUE");
-});
-
-app.get("/requests", (req, res) => {
-  runQuery(res, "SELECT * FROM bug_feature_requests");
-});
-
-// ------------------------------
+// ---------------------------------------------
 // CREATE ROUTES
-// ------------------------------
-
+// ---------------------------------------------
 app.post("/contracts", (req, res) => {
-  const { client_id, contract_name, description, start_date, end_date, total_value, created_by } = req.body;
+  const {
+    client_id,
+    contract_name,
+    description,
+    start_date,
+    end_date,
+    total_value,
+    created_by,
+  } = req.body;
 
   runQuery(
     res,
-    `INSERT INTO contracts
-     (client_id, contract_name, description, start_date, end_date, total_value, created_by)
+    `INSERT INTO contracts(client_id, contract_name, description, start_date, end_date, total_value, created_by)
      VALUES ($1,$2,$3,$4,$5,$6,$7)
      RETURNING *`,
-    [client_id, contract_name, description, start_date, end_date, total_value, created_by]
+    [
+      client_id,
+      contract_name,
+      description,
+      start_date,
+      end_date,
+      total_value,
+      created_by,
+    ]
   );
 });
 
 app.post("/milestones", (req, res) => {
-  const { contract_id, milestone_name, description, due_date, amount } = req.body;
+  const { contract_id, milestone_name, description, due_date, amount } =
+    req.body;
 
   runQuery(
     res,
-    `INSERT INTO contract_milestones
-     (contract_id, milestone_name, description, due_date, amount)
+    `INSERT INTO contract_milestones(contract_id, milestone_name, description, due_date, amount)
      VALUES ($1,$2,$3,$4,$5)
      RETURNING *`,
     [contract_id, milestone_name, description, due_date, amount]
@@ -96,12 +102,12 @@ app.post("/milestones", (req, res) => {
 });
 
 app.post("/hours", (req, res) => {
-  const { user_id, client_id, work_date, hours_worked, notes, is_billable } = req.body;
+  const { user_id, client_id, work_date, hours_worked, notes, is_billable } =
+    req.body;
 
   runQuery(
     res,
-    `INSERT INTO hourly_entries
-     (user_id, client_id, work_date, hours_worked, notes, is_billable)
+    `INSERT INTO hourly_entries(user_id, client_id, work_date, hours_worked, notes, is_billable)
      VALUES ($1,$2,$3,$4,$5,$6)
      RETURNING *`,
     [user_id, client_id, work_date, hours_worked, notes, is_billable]
@@ -109,36 +115,38 @@ app.post("/hours", (req, res) => {
 });
 
 app.post("/requests", (req, res) => {
-  const { user_id, request_type, title, description } = req.body;
+  const { user_id, request_type, title, severity, description } = req.body;
 
   runQuery(
     res,
-    `INSERT INTO bug_feature_requests
-     (user_id, request_type, title, description)
-     VALUES ($1,$2,$3,$4)
+    `INSERT INTO bug_feature_requests(user_id, request_type, title, severity, description)
+     VALUES ($1,$2,$3,$4,$5)
      RETURNING *`,
-    [user_id, request_type, title, description]
+    [user_id, request_type, title, severity, description]
   );
 });
 
-// ------------------------------
+// ---------------------------------------------
 // UPDATE ROUTES
-// ------------------------------
-
+// ---------------------------------------------
 app.put("/contracts/:id", (req, res) => {
-  const { contract_name, description, start_date, end_date, total_value } = req.body;
+  const { contract_name, description, start_date, end_date, total_value } =
+    req.body;
 
   runQuery(
     res,
     `UPDATE contracts
-     SET contract_name=$1,
-         description=$2,
-         start_date=$3,
-         end_date=$4,
-         total_value=$5
+     SET contract_name=$1, description=$2, start_date=$3, end_date=$4, total_value=$5
      WHERE id=$6
      RETURNING *`,
-    [contract_name, description, start_date, end_date, total_value, req.params.id]
+    [
+      contract_name,
+      description,
+      start_date,
+      end_date,
+      total_value,
+      req.params.id,
+    ]
   );
 });
 
@@ -148,10 +156,7 @@ app.put("/hours/:id", (req, res) => {
   runQuery(
     res,
     `UPDATE hourly_entries
-     SET work_date=$1,
-         hours_worked=$2,
-         notes=$3,
-         is_billable=$4
+     SET work_date=$1, hours_worked=$2, notes=$3, is_billable=$4
      WHERE id=$5
      RETURNING *`,
     [work_date, hours_worked, notes, is_billable, req.params.id]
@@ -164,57 +169,57 @@ app.put("/milestones/:id", (req, res) => {
   runQuery(
     res,
     `UPDATE contract_milestones
-     SET milestone_name=$1,
-         description=$2,
-         due_date=$3,
-         amount=$4
+     SET milestone_name=$1, description=$2, due_date=$3, amount=$4
      WHERE id=$5
      RETURNING *`,
     [milestone_name, description, due_date, amount, req.params.id]
   );
 });
 
-// ------------------------------
-// SOFT DELETE
-// ------------------------------
+// Update Bug/Feature Request
+app.put("/requests/:id", (req, res) => {
+  const { title, severity, description } = req.body;
 
-app.put("/contracts/:id/delete", (req, res) => {
   runQuery(
     res,
-    `UPDATE contracts
-     SET is_deleted=true
-     WHERE id=$1
+    `UPDATE bug_feature_requests
+     SET title=$1, severity=$2, description=$3
+     WHERE id=$4
      RETURNING *`,
-    [req.params.id]
+    [title, severity, description, req.params.id]
   );
 });
 
-app.put("/hours/:id/delete", (req, res) => {
+// ---------------------------------------------
+// SOFT DELETE ROUTES
+// ---------------------------------------------
+app.put("/contracts/:id/delete", (req, res) =>
   runQuery(
     res,
-    `UPDATE hourly_entries
-     SET is_deleted=true
-     WHERE id=$1
-     RETURNING *`,
+    `UPDATE contracts SET is_deleted=true WHERE id=$1 RETURNING *`,
     [req.params.id]
-  );
-});
+  )
+);
 
-app.put("/milestones/:id/delete", (req, res) => {
+app.put("/hours/:id/delete", (req, res) =>
   runQuery(
     res,
-    `UPDATE contract_milestones
-     SET is_deleted=true
-     WHERE id=$1
-     RETURNING *`,
+    `UPDATE hourly_entries SET is_deleted=true WHERE id=$1 RETURNING *`,
     [req.params.id]
-  );
-});
+  )
+);
 
-// ------------------------------
+app.put("/milestones/:id/delete", (req, res) =>
+  runQuery(
+    res,
+    `UPDATE contract_milestones SET is_deleted=true WHERE id=$1 RETURNING *`,
+    [req.params.id]
+  )
+);
+
+// ---------------------------------------------
 // SUBMISSIONS
-// ------------------------------
-
+// ---------------------------------------------
 app.post("/submissions", (req, res) => {
   const { user_id } = req.body;
 
@@ -232,18 +237,17 @@ app.post("/submission-items", (req, res) => {
 
   runQuery(
     res,
-    `INSERT INTO hourly_submission_items
-     (submission_id, hourly_entry_id)
+    `INSERT INTO hourly_submission_items(submission_id, hourly_entry_id)
      VALUES ($1,$2)
      RETURNING *`,
     [submission_id, hourly_entry_id]
   );
 });
 
-// ------------------------------
-
+// ---------------------------------------------
+// START SERVER
+// ---------------------------------------------
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
