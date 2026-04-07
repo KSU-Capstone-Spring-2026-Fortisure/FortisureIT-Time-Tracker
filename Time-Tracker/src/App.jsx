@@ -5,7 +5,6 @@ import HourlyTracking from "./pages/HourlyTracking";
 import Contracts from "./pages/Contracts";
 import Milestones from "./pages/Milestones";
 import BugFeatureRequest from "./pages/BugFeatureRequest";
-import MilestoneForm from "./pages/shared/MilestoneForm";
 
 function App() {
   return (
@@ -27,15 +26,6 @@ function App() {
           path="contracts/:clientId/milestones/:contractId"
           element={<Milestones />}
         />
-        <Route
-          path="contracts/:clientId/milestones/:contractId/add"
-          element={<MilestoneForm />}
-        />
-        <Route
-          path="contracts/:clientId/milestones/:contractId/edit/:milestoneId"
-          element={<MilestoneForm />}
-        />
-
         {/* Bugs & Features */}
         <Route path="bugs-and-features" element={<BugFeatureRequest />} />
       </Routes>

@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import "../css/header.css";
 import logo from "../assets/logo.png";
+import ProjectTracker from "../pages/ProjectTracker";
 
 function Header({ title, showBack = false }) {
   const navigate = useNavigate();
 
   return (
     <header className="header">
-      
+
       {/* Left side */}
       <div className="left-section">
         {showBack && (
@@ -16,7 +17,7 @@ function Header({ title, showBack = false }) {
           </button>
         )}
 
-        <img src={logo} alt="Logo" className="logo-img" />
+        <img src={logo} alt="Logo" className="logo-img" onClick={() => navigate("/")} />
       </div>
 
       {/* Center title */}

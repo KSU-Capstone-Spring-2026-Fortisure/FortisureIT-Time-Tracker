@@ -53,8 +53,15 @@ app.get("/milestones", (req, res) =>
 app.get("/hours", (req, res) =>
   runQuery(res, "SELECT * FROM hourly_entries WHERE is_deleted IS NOT TRUE")
 );
+
+// ⭐ Only return open (not completed) requests
 app.get("/requests", (req, res) =>
-  runQuery(res, "SELECT * FROM bug_feature_requests")
+  runQuery(
+    res,
+    `SELECT * FROM bug_feature_requests 
+     WHERE completed = false 
+     ORDER BY modified_date DESC`
+  )
 );
 
 // ---------------------------------------------
@@ -163,6 +170,17 @@ app.put("/hours/:id", (req, res) => {
   );
 });
 
+app.put("/hours/:id/submit", (req, res) => {
+  runQuery(
+    res,
+    `UPDATE hourly_entries
+     SET is_submitted = true
+     WHERE id = $1
+     RETURNING *`,
+    [req.params.id]
+  );
+});
+
 app.put("/milestones/:id", (req, res) => {
   const { milestone_name, description, due_date, amount } = req.body;
 
@@ -176,17 +194,33 @@ app.put("/milestones/:id", (req, res) => {
   );
 });
 
-// Update Bug/Feature Request
+// ⭐ Update Bug/Feature Request
 app.put("/requests/:id", (req, res) => {
   const { title, severity, description } = req.body;
 
   runQuery(
     res,
     `UPDATE bug_feature_requests
-     SET title=$1, severity=$2, description=$3
+     SET title=$1,
+         severity=$2,
+         description=$3,
+         modified_date = NOW()
      WHERE id=$4
      RETURNING *`,
     [title, severity, description, req.params.id]
+  );
+});
+
+// ⭐ Mark as complete
+app.put("/requests/:id/complete", (req, res) => {
+  runQuery(
+    res,
+    `UPDATE bug_feature_requests
+     SET completed = true,
+         modified_date = NOW()
+     WHERE id = $1
+     RETURNING *`,
+    [req.params.id]
   );
 });
 

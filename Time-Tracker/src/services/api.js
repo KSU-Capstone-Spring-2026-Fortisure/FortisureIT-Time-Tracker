@@ -75,13 +75,20 @@ export const updateContract = (id, data) => put(`contracts/${id}`, data);
 export const updateMilestone = (id, data) => put(`milestones/${id}`, data);
 export const updateHourEntry = (id, data) => put(`hours/${id}`, data);
 
-// Update Bug/Feature Request
 export const updateBug = (id, data) =>
   put(`requests/${id}`, {
     title: data.title,
     severity: data.severity,
     description: data.description,
+    complete: data.complete,
   });
+
+export const completeBug = (id) =>
+  put(`requests/${id}/complete`);
+
+export const markHourSubmitted = (id) =>
+  put(`hours/${id}/submit`, {});
+
 
 // ------------------------------
 // SOFT DELETE

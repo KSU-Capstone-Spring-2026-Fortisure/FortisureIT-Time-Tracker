@@ -18,6 +18,7 @@
 .logo-img {
   height: 40px;
   width: auto;
+  cursor: pointer;
 }
 
 /* BACK BUTTON */
