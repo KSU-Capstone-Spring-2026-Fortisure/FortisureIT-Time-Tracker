@@ -1,0 +1,91 @@
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    width: 700px;
+    padding: 30px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+}
+
+.btn-primary {
+    background: #8b0000;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btn-secondary {
+    background: gray;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.form-row input,
+.form-row textarea,
+.form-row select {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #ccc;
+    padding: 6px 0;
+    font-size: 14px;
+    width: 100%;
+
+    color: black;
+}
+
+.form-row input:focus,
+.form-row textarea:focus {
+    outline: none;
+    border-bottom: 1px solid #8b0000;
+}
+
+.form-grid {
+    display: grid;
+    gap: 18px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    align-items: center;
+    gap: 20px;
+}
+
+.form-row label {
+    font-weight: 600;
+}
+
+.form-row input::placeholder,
+.form-row textarea::placeholder {
+    color: #888;
+}
+
+.form-row input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}

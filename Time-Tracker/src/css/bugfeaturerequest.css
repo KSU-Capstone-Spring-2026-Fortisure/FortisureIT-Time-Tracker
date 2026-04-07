@@ -1,0 +1,80 @@
+/* Page wrapper */
+.bug-page {
+    padding: 40px;
+    background-color: #f4f4f4;
+    min-height: 100vh;
+
+    display: flex;
+    justify-content: center;
+}
+
+.bug-container {
+    background: white;
+    width: 700px;
+    padding: 30px;
+    border-radius: 8px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.form-grid {
+    display: grid;
+    gap: 18px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    align-items: center;
+    gap: 20px;
+}
+
+.form-row label {
+    font-weight: 600;
+}
+
+.form-row input,
+.form-row textarea,
+.form-row select {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #ccc;
+    padding: 6px 0;
+    font-size: 14px;
+    width: 100%;
+    color: black;
+}
+
+.form-row input:focus,
+.form-row textarea:focus,
+.form-row select:focus {
+    outline: none;
+    border-bottom: 1px solid #8b0000;
+}
+
+/* Buttons reused from modal */
+.modal-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+}
+
+.btn-primary {
+    background: #8b0000;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btn-secondary {
+    background: gray;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}

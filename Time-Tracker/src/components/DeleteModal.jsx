@@ -4,7 +4,7 @@ function DeleteModal({ isOpen, onCancel, onConfirm }) {
   return (
     <div className="modal-overlay">
       <div className="modal">
-        <h3>Are you sure you want to delete these hours?</h3>
+        <h3>Are you sure you want to delete this item?</h3>
 
         <div className="modal-actions">
           <button className="danger-btn" onClick={onConfirm}>
