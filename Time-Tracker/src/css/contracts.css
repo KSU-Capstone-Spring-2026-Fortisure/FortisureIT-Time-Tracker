@@ -1,0 +1,70 @@
+.contracts {
+    padding: 40px;
+    background-color: #f4f4f4;
+    min-height: 100vh;
+}
+
+.header-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.back-btn {
+    font-size: 20px;
+    background: black;
+    border: none;
+    cursor: pointer;
+}
+
+.title-group {
+    margin-left: 20px;
+}
+
+.divider {
+    margin: 20px 0;
+    border-bottom: 1px solid #ddd;
+}
+
+.table-container {
+    margin-top: 10px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    text-align: left;
+    padding: 10px;
+    font-size: 18px;
+}
+
+td {
+    padding: 10px;
+    border-top: 1px solid #ddd;
+}
+
+.icon-cell {
+    white-space: nowrap;
+}
+
+.icon {
+    margin-left: 8px;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.add-button-container {
+    margin-top: 20px;
+}
+
+.add-button {
+    background-color: #8b0000;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
