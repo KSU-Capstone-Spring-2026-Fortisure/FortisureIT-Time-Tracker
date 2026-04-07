@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import Header from "../components/Header";
 import ResultModal from "../components/ResultModal";
+import ConfirmModal from "../components/ConfirmModal";
+import BugFeatureModal from "./shared/BugFeatureModal";
+
 import {
   getBugs,
   createBug,
-  updateBug,   // ✅ NEW
+  updateBug,
+  completeBug,
 } from "../services/api";
+
 import "../css/bugfeaturerequest.css";
 
 function BugFeatureRequest() {
@@ -19,9 +25,11 @@ function BugFeatureRequest() {
     description: "",
   });
 
-  const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [isViewMode, setIsViewMode] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [itemToComplete, setItemToComplete] = useState(null);
 
   const [resultMessage, setResultMessage] = useState("");
   const [error, setError] = useState("");
@@ -46,6 +54,79 @@ function BugFeatureRequest() {
     }
   };
 
+  const updateField = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // -----------------------------
+  // ADD / EDIT
+  // -----------------------------
+
+  const handleAdd = () => {
+    setEditingItem(null);
+    setForm({ title: "", severity: "Low", description: "" });
+    setShowEditModal(true);
+  };
+
+  const handleEdit = (item) => {
+    setEditingItem(item);
+    setForm({
+      title: item.title,
+      severity: item.severity,
+      description: item.description,
+    });
+    setShowEditModal(true);
+  };
+
+  // -----------------------------
+  // MARK COMPLETE
+  // -----------------------------
+
+  const openCompleteModal = (item) => {
+    setItemToComplete(item);
+    setShowConfirmModal(true);
+  };
+
+  const handleMarkComplete = async () => {
+    try {
+      await completeBug(itemToComplete.id);
+
+      await loadBugs();
+      setShowConfirmModal(false);
+      setItemToComplete(null);
+      setResultMessage("Request marked as complete.");
+    } catch (err) {
+      console.error("Failed to mark complete:", err);
+      setError("Unable to update request.");
+    }
+  };
+
+  // -----------------------------
+  // SAVE
+  // -----------------------------
+
+  const handleSubmit = async () => {
+    try {
+      if (editingItem) {
+        await updateBug(editingItem.id, form);
+      } else {
+        await createBug(form);
+      }
+
+      await loadBugs();
+      setShowEditModal(false);
+      setEditingItem(null);
+      setResultMessage("Request saved successfully.");
+    } catch (err) {
+      console.error("Failed to submit request:", err);
+      setError("Unable to submit request. Please try again.");
+    }
+  };
+
+  // -----------------------------
+  // RENDER
+  // -----------------------------
+
   if (error) {
     return (
       <div className="bug-report">
@@ -59,68 +140,6 @@ function BugFeatureRequest() {
       </div>
     );
   }
-
-  const update = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  // -----------------------------
-  // ADD / EDIT / VIEW HANDLERS
-  // -----------------------------
-
-  const handleAdd = () => {
-    setEditingItem(null);
-    setIsViewMode(false);
-    setForm({ title: "", severity: "Low", description: "" });
-    setShowForm(true);
-  };
-
-  const handleEdit = (item) => {
-    setEditingItem(item);
-    setIsViewMode(false);
-    setForm({
-      title: item.title,
-      severity: item.severity,
-      description: item.description,
-    });
-    setShowForm(true);
-  };
-
-  const handleView = (item) => {
-    setEditingItem(item);
-    setIsViewMode(true);
-    setForm({
-      title: item.title,
-      severity: item.severity,
-      description: item.description,
-    });
-    setShowForm(true);
-  };
-
-  // -----------------------------
-  // SAVE HANDLER
-  // -----------------------------
-
-  const handleSubmit = async () => {
-    try {
-      if (editingItem) {
-        // UPDATE
-        await updateBug(editingItem.id, form);
-      } else {
-        // CREATE
-        const created = await createBug(form);
-        setItems((prev) => [...prev, created]);
-      }
-
-      await loadBugs();
-      setShowForm(false);
-      setEditingItem(null);
-      setResultMessage("Request saved successfully.");
-    } catch (err) {
-      console.error("Failed to submit request:", err);
-      setError("Unable to submit request. Please try again.");
-    }
-  };
 
   return (
     <div className="bug-report">
@@ -152,8 +171,8 @@ function BugFeatureRequest() {
                       <td>{i.severity}</td>
                       <td>{i.description}</td>
                       <td className="icon-cell">
-                        <span className="icon" onClick={() => handleView(i)}>📄</span>
                         <span className="icon" onClick={() => handleEdit(i)}>✏️</span>
+                        <span className="icon" onClick={() => openCompleteModal(i)}>✅</span>
                       </td>
                     </tr>
                   ))}
@@ -165,64 +184,30 @@ function BugFeatureRequest() {
                   Add
                 </button>
               </div>
-
-              {showForm && (
-                <>
-                  <h3>{isViewMode ? "View Request" : editingItem ? "Edit Request" : "New Request"}</h3>
-
-                  <div className="form-grid">
-                    <div className="form-row">
-                      <label>Title</label>
-                      <input
-                        value={form.title}
-                        disabled={isViewMode}
-                        onChange={(e) => update("title", e.target.value)}
-                      />
-                    </div>
-
-                    <div className="form-row">
-                      <label>Severity</label>
-                      <select
-                        value={form.severity}
-                        disabled={isViewMode}
-                        onChange={(e) => update("severity", e.target.value)}
-                      >
-                        <option>Low</option>
-                        <option>Medium</option>
-                        <option>High</option>
-                      </select>
-                    </div>
-
-                    <div className="form-row">
-                      <label>Description</label>
-                      <textarea
-                        rows="4"
-                        value={form.description}
-                        disabled={isViewMode}
-                        onChange={(e) => update("description", e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="modal-buttons">
-                    {!isViewMode && (
-                      <button className="btn-primary" onClick={handleSubmit}>
-                        Save
-                      </button>
-                    )}
-                    <button
-                      className="btn-secondary"
-                      onClick={() => setShowForm(false)}
-                    >
-                      {isViewMode ? "Close" : "Cancel"}
-                    </button>
-                  </div>
-                </>
-              )}
             </>
           )}
         </div>
       </div>
+
+      {/* EDIT MODAL */}
+      {showEditModal && (
+        <BugFeatureModal
+          form={form}
+          onChange={updateField}
+          onSave={handleSubmit}
+          onCancel={() => setShowEditModal(false)}
+          isEditing={!!editingItem}
+        />
+      )}
+
+      {/* CONFIRM COMPLETE MODAL */}
+      {showConfirmModal && (
+        <ConfirmModal
+          message="Are you sure you want to mark this as complete?"
+          onCancel={() => setShowConfirmModal(false)}
+          onConfirm={handleMarkComplete}
+        />
+      )}
 
       <ResultModal
         message={resultMessage}

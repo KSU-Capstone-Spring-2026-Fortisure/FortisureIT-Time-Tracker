@@ -13,6 +13,7 @@ import {
     createSubmission,
     createSubmissionItem,
     softDeleteHour,
+    markHourSubmitted,
 } from "../services/api";
 
 import "../css/hourlytracking.css";
@@ -168,6 +169,9 @@ function HourlyTracking() {
                     submission_id: submissionId,
                     hourly_entry_id: entry.id,
                 });
+
+                // NEW: mark entry as submitted
+                await markHourSubmitted(entry.id);
             }
 
             setShowApproveConfirm(false);
