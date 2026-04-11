@@ -15,7 +15,6 @@ import {
   completeBug,
 } from "../services/api";
 
-import "../css/index.css";
 import "../css/bugfeaturerequest.css";
 
 function BugFeatureRequest() {

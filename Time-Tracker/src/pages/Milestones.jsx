@@ -15,7 +15,6 @@ import {
 } from "../services/api";
 
 import "../css/milestones.css";
-import "../css/index.css";
 import { sanitizeNumber, sleep } from "./shared/helpers";
 
 const formatDate = (value) => {

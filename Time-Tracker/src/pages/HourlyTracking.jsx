@@ -20,7 +20,6 @@ import {
 
 import { sanitizeNumber, sleep } from "./shared/helpers";
 
-import "../css/index.css";
 import "../css/hourlytracking.css";
 
 function HourlyTracking() {
