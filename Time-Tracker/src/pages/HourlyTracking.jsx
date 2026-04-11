@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+
 import AddEditModal from "./shared/AddEditTimeModal";
 import DeleteModal from "../components/DeleteModal";
 import ConfirmModal from "../components/ConfirmModal";
 import ResultModal from "../components/ResultModal";
 import Header from "../components/Header";
+import Button from "../components/Button";
 
 import {
     getHours,
@@ -16,14 +18,20 @@ import {
     markHourSubmitted,
 } from "../services/api";
 
+import { sanitizeNumber, sleep } from "./shared/helpers";
+
+import "../css/index.css";
 import "../css/hourlytracking.css";
 
 function HourlyTracking() {
     const { clientId } = useParams();
+    const navigate = useNavigate();
 
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(true);
+
     const [error, setError] = useState("");
+    const [debugError, setDebugError] = useState("");
 
     const [showAddEdit, setShowAddEdit] = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
@@ -33,6 +41,8 @@ function HourlyTracking() {
     const [entryToDelete, setEntryToDelete] = useState(null);
     const [showApproveConfirm, setShowApproveConfirm] = useState(false);
 
+    // controls ResultModal visibility
+    const [showResult, setShowResult] = useState(false);
     const [resultMessage, setResultMessage] = useState("");
 
     useEffect(() => {
@@ -45,9 +55,6 @@ function HourlyTracking() {
 
         try {
             const data = await getHours();
-            console.log("Hours API response:", data);
-
-            // ✅ Ensure array
             const safeData = Array.isArray(data) ? data : [];
 
             const filtered = safeData.filter(
@@ -61,25 +68,12 @@ function HourlyTracking() {
         } catch (err) {
             console.error("Failed to load hours:", err);
             setError("Unable to load hourly entries. Please try again.");
+            setDebugError(String(err?.message || err));
             setEntries([]);
         } finally {
             setLoading(false);
         }
     };
-
-    if (error) {
-        return (
-            <div className="timeTracker">
-                <Header title="Hourly Tracking" showBack />
-                <div className="divider" />
-
-                <div className="error-box">
-                    <p>{error}</p>
-                    <button onClick={loadEntries}>Retry</button>
-                </div>
-            </div>
-        );
-    }
 
     const handleAdd = () => {
         setEditingEntry(null);
@@ -99,13 +93,14 @@ function HourlyTracking() {
         setShowAddEdit(true);
     };
 
+    // SAVE
     const handleSave = async (data) => {
         try {
             const payload = {
-                user_id: 1, //replace with current user id later
+                user_id: 1,
                 client_id: Number(clientId),
                 work_date: data.work_date,
-                hours_worked: data.hours_worked,
+                hours_worked: sanitizeNumber(data.hours_worked),
                 notes: data.notes,
                 is_billable: data.is_billable,
             };
@@ -117,13 +112,20 @@ function HourlyTracking() {
             }
 
             await loadEntries();
+            setShowAddEdit(false);
+
+            // Show result modal
             setResultMessage("Hours saved successfully.");
+            setShowResult(true);
+
         } catch (err) {
             console.error("Failed to save entry:", err);
             setError("Unable to save entry. Please try again.");
+            setDebugError(String(err?.message || err));
         }
     };
 
+    // DELETE
     const handleDelete = (entry) => {
         setEntryToDelete(entry);
         setShowDeleteModal(true);
@@ -133,15 +135,20 @@ function HourlyTracking() {
         try {
             await softDeleteHour(entryToDelete.id);
             await loadEntries();
+            setShowDeleteModal(false);
+
+            // Show result modal
             setResultMessage("Entry deleted.");
+            setShowResult(true);
+
         } catch (err) {
             console.error("Failed to delete entry:", err);
             setError("Unable to delete entry. Please try again.");
-        } finally {
-            setShowDeleteModal(false);
+            setDebugError(String(err?.message || err));
         }
     };
 
+    // SUBMIT HOURS
     const handleSubmitHours = async () => {
         try {
             if (entries.length === 0) {
@@ -149,20 +156,13 @@ function HourlyTracking() {
                 return;
             }
 
-            const submission = await createSubmission({
-                user_id: 1,
-            });
+            const submission = await createSubmission({ user_id: 1 });
 
-            console.log("Submission response:", submission);
-
-            // ✅ FIX: handle array response
             const submissionId = Array.isArray(submission)
                 ? submission[0]?.id
                 : submission?.id;
 
-            if (!submissionId) {
-                throw new Error("Invalid submission response");
-            }
+            if (!submissionId) throw new Error("Invalid submission response");
 
             for (const entry of entries) {
                 await createSubmissionItem({
@@ -170,16 +170,22 @@ function HourlyTracking() {
                     hourly_entry_id: entry.id,
                 });
 
-                // NEW: mark entry as submitted
                 await markHourSubmitted(entry.id);
             }
 
             setShowApproveConfirm(false);
             await loadEntries();
+
+            // Show result modal
             setResultMessage("Hours submitted successfully.");
+            setShowResult(true);
+
+            navigate("/");
+
         } catch (err) {
             console.error("Failed to submit hours:", err);
             setError("Unable to submit hours. Please try again.");
+            setDebugError(String(err?.message || err));
             setShowApproveConfirm(false);
         }
     };
@@ -187,7 +193,6 @@ function HourlyTracking() {
     return (
         <div className="timeTracker">
             <Header title="Hourly Tracking" showBack />
-
             <div className="divider" />
 
             {loading && <p>Loading hourly entries...</p>}
@@ -217,9 +222,17 @@ function HourlyTracking() {
                                         <td>{entry.is_billable ? "Yes" : "No"}</td>
                                         <td>{entry.notes}</td>
                                         <td className="icon-cell">
-                                            <span className="icon" onClick={() => handleView(entry)}>📄</span>
-                                            <span className="icon" onClick={() => handleEdit(entry)}>✏️</span>
-                                            <span className="icon" onClick={() => handleDelete(entry)}>❌</span>
+                                            <Button variant="secondary" onClick={() => handleView(entry)}>
+                                                View
+                                            </Button>
+
+                                            <Button variant="primary" onClick={() => handleEdit(entry)}>
+                                                Edit
+                                            </Button>
+
+                                            <Button variant="danger" onClick={() => handleDelete(entry)}>
+                                                Delete
+                                            </Button>
                                         </td>
                                     </tr>
                                 ))
@@ -228,19 +241,22 @@ function HourlyTracking() {
                     </table>
 
                     <div className="add-container">
-                        <button className="add-btn" onClick={handleAdd}>
+                        <Button variant="primary" pop onClick={handleAdd}>
                             Add
-                        </button>
+                        </Button>
                     </div>
 
-                    <div className="submit-container">
-                        <button
-                            className="submit-btn-main"
-                            onClick={() => setShowApproveConfirm(true)}
-                        >
-                            Submit
-                        </button>
-                    </div>
+                    {entries.length > 0 && (
+                        <div className="submit-container">
+                            <Button
+                                variant="primary"
+                                pop
+                                onClick={() => setShowApproveConfirm(true)}
+                            >
+                                Submit
+                            </Button>
+                        </div>
+                    )}
                 </>
             )}
 
@@ -272,11 +288,12 @@ function HourlyTracking() {
                 />
             )}
 
+            {/* Result modal now closes properly */}
             <ResultModal
                 message={resultMessage}
                 onClose={() => {
+                    setShowResult(false);
                     setResultMessage("");
-                    loadEntries();
                 }}
             />
         </div>

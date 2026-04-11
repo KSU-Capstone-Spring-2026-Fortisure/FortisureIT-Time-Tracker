@@ -1,6 +1,15 @@
+import { sanitizeNumber } from "../shared/helpers";
 import "../../css/modals/milestoneModal.css";
+import { blockInvalidChars } from "./helpers";
+import Button from "../../components/Button";
 
 function MilestoneModal({ form, onChange, onSave, onCancel, isEditing }) {
+  const handleAmountChange = (e) => {
+    const raw = e.target.value;
+    const sanitized = sanitizeNumber(raw);
+    onChange("amount", sanitized);
+  };
+
   return (
     <div className="modal-overlay">
       <div className="modal">
@@ -37,21 +46,27 @@ function MilestoneModal({ form, onChange, onSave, onCancel, isEditing }) {
             <label>Amount</label>
             <input
               type="number"
+              min="0"
+              max="9223372036854775807"
+              step="0.01" 
+              inputMode="decimal"
+              onKeyDown={blockInvalidChars}   
               value={form.amount}
-              onChange={(e) => onChange("amount", e.target.value)}
+              onChange={handleAmountChange}
             />
           </div>
 
         </div>
 
-        <div className="modal-actions">
-          <button className="primary-btn" onClick={onSave}>
-            Save
-          </button>
-          <button className="secondary-btn" onClick={onCancel}>
-            Cancel
-          </button>
-        </div>
+        <div className="modal-footer spaced">
+            <Button variant="secondary" onClick={onCancel}>
+              Cancel
+            </Button>
+
+            <Button variant="primary" pop onClick={onSave}>
+              Save
+            </Button>
+          </div>
       </div>
     </div>
   );

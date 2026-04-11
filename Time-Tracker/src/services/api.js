@@ -16,9 +16,7 @@ async function safeFetch(url, options = {}) {
   }
 }
 
-// ------------------------------
 // GENERIC HELPERS
-// ------------------------------
 
 function post(endpoint, body) {
   return safeFetch(`${BASE_URL}/${endpoint}`, {
@@ -36,9 +34,7 @@ function put(endpoint, body) {
   });
 }
 
-// ------------------------------
 // GET
-// ------------------------------
 
 export const getUsers = () => safeFetch(`${BASE_URL}/users`);
 export const getClients = () => safeFetch(`${BASE_URL}/clients`);
@@ -47,9 +43,7 @@ export const getMilestones = () => safeFetch(`${BASE_URL}/milestones`);
 export const getHours = () => safeFetch(`${BASE_URL}/hours`);
 export const getBugs = () => safeFetch(`${BASE_URL}/requests`);
 
-// ------------------------------
 // CREATE
-// ------------------------------
 
 export const createContract = (data) => post("contracts", data);
 export const createMilestone = (data) => post("milestones", data);
@@ -67,9 +61,7 @@ export const createBug = (data) =>
     description: data.description,
   });
 
-// ------------------------------
 // UPDATE
-// ------------------------------
 
 export const updateContract = (id, data) => put(`contracts/${id}`, data);
 export const updateMilestone = (id, data) => put(`milestones/${id}`, data);
@@ -90,9 +82,7 @@ export const markHourSubmitted = (id) =>
   put(`hours/${id}/submit`, {});
 
 
-// ------------------------------
 // SOFT DELETE
-// ------------------------------
 
 export const softDeleteContract = (id) => put(`contracts/${id}/delete`);
 export const softDeleteMilestone = (id) => put(`milestones/${id}/delete`);

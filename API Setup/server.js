@@ -7,9 +7,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ---------------------------------------------
+// Normalize empty values to NULL
+function normalize(v) {
+  return v === "" || v === undefined ? null : v;
+}
+
 // PostgreSQL Connection
-// ---------------------------------------------
 const pool = new Pool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -19,9 +22,7 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
-// ---------------------------------------------
 // Helper to run queries
-// ---------------------------------------------
 async function runQuery(res, sql, params = []) {
   try {
     const result = await pool.query(sql, params);
@@ -32,16 +33,12 @@ async function runQuery(res, sql, params = []) {
   }
 }
 
-// ---------------------------------------------
 // TEST ROUTE
-// ---------------------------------------------
 app.get("/", (req, res) => {
   res.send("Project Tracker API Running");
 });
 
-// ---------------------------------------------
 // GET ROUTES
-// ---------------------------------------------
 app.get("/users", (req, res) => runQuery(res, "SELECT * FROM users"));
 app.get("/clients", (req, res) => runQuery(res, "SELECT * FROM clients"));
 app.get("/contracts", (req, res) =>
@@ -54,7 +51,7 @@ app.get("/hours", (req, res) =>
   runQuery(res, "SELECT * FROM hourly_entries WHERE is_deleted IS NOT TRUE")
 );
 
-// ⭐ Only return open (not completed) requests
+// Only return open (not completed) requests
 app.get("/requests", (req, res) =>
   runQuery(
     res,
@@ -64,9 +61,7 @@ app.get("/requests", (req, res) =>
   )
 );
 
-// ---------------------------------------------
 // CREATE ROUTES
-// ---------------------------------------------
 app.post("/contracts", (req, res) => {
   const {
     client_id,
@@ -85,11 +80,11 @@ app.post("/contracts", (req, res) => {
      RETURNING *`,
     [
       client_id,
-      contract_name,
-      description,
-      start_date,
-      end_date,
-      total_value,
+      normalize(contract_name),
+      normalize(description),
+      normalize(start_date),
+      normalize(end_date),
+      normalize(total_value),
       created_by,
     ]
   );
@@ -104,7 +99,13 @@ app.post("/milestones", (req, res) => {
     `INSERT INTO contract_milestones(contract_id, milestone_name, description, due_date, amount)
      VALUES ($1,$2,$3,$4,$5)
      RETURNING *`,
-    [contract_id, milestone_name, description, due_date, amount]
+    [
+      contract_id,
+      normalize(milestone_name),
+      normalize(description),
+      normalize(due_date),
+      normalize(amount),
+    ]
   );
 });
 
@@ -117,7 +118,14 @@ app.post("/hours", (req, res) => {
     `INSERT INTO hourly_entries(user_id, client_id, work_date, hours_worked, notes, is_billable)
      VALUES ($1,$2,$3,$4,$5,$6)
      RETURNING *`,
-    [user_id, client_id, work_date, hours_worked, notes, is_billable]
+    [
+      user_id,
+      client_id,
+      normalize(work_date),
+      normalize(hours_worked),
+      normalize(notes),
+      normalize(is_billable),
+    ]
   );
 });
 
@@ -129,13 +137,17 @@ app.post("/requests", (req, res) => {
     `INSERT INTO bug_feature_requests(user_id, request_type, title, severity, description)
      VALUES ($1,$2,$3,$4,$5)
      RETURNING *`,
-    [user_id, request_type, title, severity, description]
+    [
+      user_id,
+      request_type,
+      normalize(title),
+      normalize(severity),
+      normalize(description),
+    ]
   );
 });
 
-// ---------------------------------------------
 // UPDATE ROUTES
-// ---------------------------------------------
 app.put("/contracts/:id", (req, res) => {
   const { contract_name, description, start_date, end_date, total_value } =
     req.body;
@@ -147,11 +159,11 @@ app.put("/contracts/:id", (req, res) => {
      WHERE id=$6
      RETURNING *`,
     [
-      contract_name,
-      description,
-      start_date,
-      end_date,
-      total_value,
+      normalize(contract_name),
+      normalize(description),
+      normalize(start_date),
+      normalize(end_date),
+      normalize(total_value),
       req.params.id,
     ]
   );
@@ -166,7 +178,13 @@ app.put("/hours/:id", (req, res) => {
      SET work_date=$1, hours_worked=$2, notes=$3, is_billable=$4
      WHERE id=$5
      RETURNING *`,
-    [work_date, hours_worked, notes, is_billable, req.params.id]
+    [
+      normalize(work_date),
+      normalize(hours_worked),
+      normalize(notes),
+      normalize(is_billable),
+      req.params.id,
+    ]
   );
 });
 
@@ -190,11 +208,16 @@ app.put("/milestones/:id", (req, res) => {
      SET milestone_name=$1, description=$2, due_date=$3, amount=$4
      WHERE id=$5
      RETURNING *`,
-    [milestone_name, description, due_date, amount, req.params.id]
+    [
+      normalize(milestone_name),
+      normalize(description),
+      normalize(due_date),
+      normalize(amount),
+      req.params.id,
+    ]
   );
 });
 
-// ⭐ Update Bug/Feature Request
 app.put("/requests/:id", (req, res) => {
   const { title, severity, description } = req.body;
 
@@ -207,11 +230,16 @@ app.put("/requests/:id", (req, res) => {
          modified_date = NOW()
      WHERE id=$4
      RETURNING *`,
-    [title, severity, description, req.params.id]
+    [
+      normalize(title),
+      normalize(severity),
+      normalize(description),
+      req.params.id,
+    ]
   );
 });
 
-// ⭐ Mark as complete
+// Mark as complete
 app.put("/requests/:id/complete", (req, res) => {
   runQuery(
     res,
@@ -224,9 +252,7 @@ app.put("/requests/:id/complete", (req, res) => {
   );
 });
 
-// ---------------------------------------------
 // SOFT DELETE ROUTES
-// ---------------------------------------------
 app.put("/contracts/:id/delete", (req, res) =>
   runQuery(
     res,
@@ -251,9 +277,7 @@ app.put("/milestones/:id/delete", (req, res) =>
   )
 );
 
-// ---------------------------------------------
 // SUBMISSIONS
-// ---------------------------------------------
 app.post("/submissions", (req, res) => {
   const { user_id } = req.body;
 
@@ -278,9 +302,7 @@ app.post("/submission-items", (req, res) => {
   );
 });
 
-// ---------------------------------------------
 // START SERVER
-// ---------------------------------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

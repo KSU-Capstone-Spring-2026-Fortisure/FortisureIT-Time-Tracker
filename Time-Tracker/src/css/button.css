@@ -1,0 +1,76 @@
+/* Base button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+/* Variants */
+.btn-primary {
+  background: #8b0000;
+  color: white;
+}
+
+.btn-secondary {
+  background: #7a7a7a;
+  color: white;
+}
+
+.btn-danger {
+  background: #b00000;
+  color: white;
+}
+
+
+.btn-ghost {
+  background: transparent;
+  color: #333;
+}
+
+.btn-complete{
+  background: green;
+  color: white;
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* Hover states */
+.btn:hover:not(:disabled) {
+  opacity: 0.85;
+  transform: scale(1.05);
+}
+
+.btn-icon:hover:not(:disabled) {
+  transform: scale(1.15);
+}
+
+/* Disabled */
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.modal-footer.spaced {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.icon-cell .btn {
+    margin-right: 8px;
+}
+
+.icon-cell .btn:last-child {
+    margin-right: 0;
+}

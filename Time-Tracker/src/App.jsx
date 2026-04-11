@@ -5,6 +5,7 @@ import HourlyTracking from "./pages/HourlyTracking";
 import Contracts from "./pages/Contracts";
 import Milestones from "./pages/Milestones";
 import BugFeatureRequest from "./pages/BugFeatureRequest";
+import Documentation from "./pages/Documentation";
 
 function App() {
   return (
@@ -28,6 +29,9 @@ function App() {
         />
         {/* Bugs & Features */}
         <Route path="bugs-and-features" element={<BugFeatureRequest />} />
+
+        {/* Documentation */}
+        <Route path="documentation" element={<Documentation />} />
       </Routes>
     </BrowserRouter>
   );
