@@ -10,6 +10,7 @@ function ClientList() {
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [debugError, setDebugError] = useState("");
 
     useEffect(() => {
         loadClients();
@@ -23,7 +24,7 @@ function ClientList() {
             const data = await getClients();
             console.log("API response:", data);
 
-            // ✅ Always ensure it's an array
+            // Always ensure it's an array
             if (Array.isArray(data)) {
                 setClients(data);
             } else {
@@ -32,7 +33,8 @@ function ClientList() {
             }
         } catch (err) {
             console.error("Failed to load clients:", err);
-            setError("Unable to load clients. Please try again.");
+            setError("Unable to load clients. Please try again later.");
+            setDebugError(String(err?.message || err));
             setClients([]);
         } finally {
             setLoading(false);
@@ -47,6 +49,7 @@ function ClientList() {
             {error && (
                 <div className="error-box">
                     <p>{error}</p>
+                    {debugError && <pre className="debug-error">{debugError}</pre>}
                     <button onClick={loadClients}>Retry</button>
                 </div>
             )}

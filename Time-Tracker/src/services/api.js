@@ -4,9 +4,24 @@ async function safeFetch(url, options = {}) {
   try {
     const res = await fetch(url, options);
 
+    // If request failed, extract backend error details
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || `Request failed: ${res.status}`);
+      let errorMessage = `Request failed: ${res.status}`;
+
+      try {
+        const data = await res.json();
+
+        // Prefer backend error fields
+        if (data.error) errorMessage = data.error;
+        if (data.detail) errorMessage += ` | Detail: ${data.detail}`;
+        if (data.hint) errorMessage += ` | Hint: ${data.hint}`;
+      } catch {
+        // If JSON parsing fails, fallback to text
+        const text = await res.text();
+        if (text) errorMessage = text;
+      }
+
+      throw new Error(errorMessage);
     }
 
     return res.json();
@@ -17,7 +32,6 @@ async function safeFetch(url, options = {}) {
 }
 
 // GENERIC HELPERS
-
 function post(endpoint, body) {
   return safeFetch(`${BASE_URL}/${endpoint}`, {
     method: "POST",
@@ -35,7 +49,6 @@ function put(endpoint, body) {
 }
 
 // GET
-
 export const getUsers = () => safeFetch(`${BASE_URL}/users`);
 export const getClients = () => safeFetch(`${BASE_URL}/clients`);
 export const getContracts = () => safeFetch(`${BASE_URL}/contracts`);
@@ -44,7 +57,6 @@ export const getHours = () => safeFetch(`${BASE_URL}/hours`);
 export const getBugs = () => safeFetch(`${BASE_URL}/requests`);
 
 // CREATE
-
 export const createContract = (data) => post("contracts", data);
 export const createMilestone = (data) => post("milestones", data);
 export const createHourEntry = (data) => post("hours", data);
@@ -62,7 +74,6 @@ export const createBug = (data) =>
   });
 
 // UPDATE
-
 export const updateContract = (id, data) => put(`contracts/${id}`, data);
 export const updateMilestone = (id, data) => put(`milestones/${id}`, data);
 export const updateHourEntry = (id, data) => put(`hours/${id}`, data);
@@ -75,15 +86,12 @@ export const updateBug = (id, data) =>
     complete: data.complete,
   });
 
-export const completeBug = (id) =>
-  put(`requests/${id}/complete`);
+export const completeBug = (id) => put(`requests/${id}/complete`);
 
 export const markHourSubmitted = (id) =>
   put(`hours/${id}/submit`, {});
 
-
 // SOFT DELETE
-
 export const softDeleteContract = (id) => put(`contracts/${id}/delete`);
 export const softDeleteMilestone = (id) => put(`milestones/${id}/delete`);
 export const softDeleteHour = (id) => put(`hours/${id}/delete`);

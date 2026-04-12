@@ -46,7 +46,7 @@ function Contracts() {
 
     const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
-    // ⭐ NEW: controls ResultModal visibility
+    // Controls ResultModal visibility
     const [showResult, setShowResult] = useState(false);
     const [resultMessage, setResultMessage] = useState("");
 
@@ -77,7 +77,7 @@ function Contracts() {
             setUsers(safeUsers);
         } catch (err) {
             console.error("Failed to load contracts:", err);
-            setError("Unable to load contracts. Please try again.");
+            setError("Unable to load contracts. Please try again later.");
             setDebugError(String(err?.message || err));
             setContracts([]);
             setUsers([]);
@@ -131,13 +131,11 @@ function Contracts() {
             await loadData();
             setShowAddEdit(false);
 
-            // ⭐ Show result modal
             setResultMessage("Contract saved successfully.");
             setShowResult(true);
 
         } catch (err) {
             console.error("Failed to save contract:", err);
-            setError("Unable to save contract. Please try again.");
             setDebugError(String(err?.message || err));
         }
     };
@@ -154,13 +152,12 @@ function Contracts() {
             await loadData();
             setShowDeleteModal(false);
 
-            // ⭐ Show result modal
             setResultMessage("Contract deleted.");
             setShowResult(true);
 
         } catch (err) {
             console.error("Failed to delete contract:", err);
-            setError("Unable to delete contract. Please try again.");
+            setError("Unable to delete contract. Please try again later.");
             setDebugError(String(err?.message || err));
         }
     };
@@ -170,7 +167,6 @@ function Contracts() {
         try {
             setShowSubmitConfirm(false);
 
-            // ⭐ Show result modal
             setResultMessage("Contracts submitted.");
             setShowResult(true);
 
@@ -287,7 +283,6 @@ function Contracts() {
                 />
             )}
 
-            {/* ⭐ FIXED: Result modal now closes properly */}
             <ResultModal
                 message={resultMessage}
                 onClose={() => {
