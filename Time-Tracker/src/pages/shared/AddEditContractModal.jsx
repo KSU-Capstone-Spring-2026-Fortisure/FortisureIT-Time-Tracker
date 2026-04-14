@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import "../../css/modals/modal.css";
+import { sanitizeNumber } from "./helpers";
+import { blockInvalidChars } from "./helpers";
+import Button from "../../components/Button";
 
 function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
   const [form, setForm] = useState({
@@ -16,9 +19,7 @@ function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
         contract_name: record.contract_name || "",
         description: record.description || "",
         total_value: record.total_value || "",
-        start_date: record.start_date
-          ? record.start_date.split("T")[0]
-          : "",
+        start_date: record.start_date ? record.start_date.split("T")[0] : "",
         end_date: record.end_date ? record.end_date.split("T")[0] : "",
       });
     } else {
@@ -50,8 +51,8 @@ function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
           {isViewMode
             ? "View Contract"
             : record
-            ? "Edit Contract"
-            : "Add Contract"}
+              ? "Edit Contract"
+              : "Add Contract"}
         </h2>
 
         <div className="form-grid">
@@ -69,8 +70,13 @@ function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
             <input
               type="number"
               disabled={isViewMode}
+              min="0"
+              max="9223372036854775807"
+              step="0.01"
+              inputMode="decimal"
+              onKeyDown={blockInvalidChars} 
               value={form.total_value}
-              onChange={(e) => update("total_value", e.target.value)}
+              onChange={(e) => update("total_value", sanitizeNumber(e.target.value))}
             />
           </div>
 
@@ -105,13 +111,14 @@ function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
         </div>
 
         {!isViewMode && (
-          <div className="modal-buttons">
-            <button className="btn-primary" onClick={handleSubmit}>
-              Save
-            </button>
-            <button className="btn-secondary" onClick={onClose}>
+          <div className="modal-footer spaced">
+            <Button variant="secondary" onClick={onClose}>
               Cancel
-            </button>
+            </Button>
+
+            <Button variant="primary" pop onClick={handleSubmit}>
+              Save
+            </Button>
           </div>
         )}
 

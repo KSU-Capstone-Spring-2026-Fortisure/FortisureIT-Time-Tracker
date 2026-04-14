@@ -5,6 +5,8 @@ import DeleteModal from "../components/DeleteModal";
 import ConfirmModal from "../components/ConfirmModal";
 import ResultModal from "../components/ResultModal";
 import AddEditContractModal from "./shared/AddEditContractModal";
+import Button from "../components/Button";
+
 import {
     getContracts,
     getUsers,
@@ -12,8 +14,9 @@ import {
     updateContract,
     softDeleteContract,
 } from "../services/api";
-
 import "../css/contracts.css";
+
+import { sanitizeNumber, sleep } from "./shared/helpers"
 
 const formatDate = (value) => {
     if (!value) return "";
@@ -32,6 +35,7 @@ function Contracts() {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [debugError, setDebugError] = useState("");
 
     const [showAddEdit, setShowAddEdit] = useState(false);
     const [editingContract, setEditingContract] = useState(null);
@@ -41,6 +45,9 @@ function Contracts() {
     const [contractToDelete, setContractToDelete] = useState(null);
 
     const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+
+    // Controls ResultModal visibility
+    const [showResult, setShowResult] = useState(false);
     const [resultMessage, setResultMessage] = useState("");
 
     useEffect(() => {
@@ -57,10 +64,6 @@ function Contracts() {
                 getUsers(),
             ]);
 
-            console.log("Contracts API:", contractsData);
-            console.log("Users API:", usersData);
-
-            // ✅ Ensure arrays
             const safeContracts = Array.isArray(contractsData) ? contractsData : [];
             const safeUsers = Array.isArray(usersData) ? usersData : [];
 
@@ -74,27 +77,14 @@ function Contracts() {
             setUsers(safeUsers);
         } catch (err) {
             console.error("Failed to load contracts:", err);
-            setError("Unable to load contracts. Please try again.");
+            setError("Unable to load contracts. Please try again later.");
+            setDebugError(String(err?.message || err));
             setContracts([]);
             setUsers([]);
         } finally {
             setLoading(false);
         }
     };
-
-    if (error) {
-        return (
-            <div className="contracts-page">
-                <Header title="Contracts" showBack />
-                <div className="divider" />
-
-                <div className="error-box">
-                    <p>{error}</p>
-                    <button onClick={loadData}>Retry</button>
-                </div>
-            </div>
-        );
-    }
 
     const getOwnerName = (ownerId) => {
         const user = users.find((u) => String(u.id) === String(ownerId));
@@ -119,13 +109,14 @@ function Contracts() {
         setShowAddEdit(true);
     };
 
+    // SAVE
     const handleSave = async (data) => {
         try {
             const payload = {
                 client_id: Number(clientId),
                 contract_name: data.contract_name,
                 description: data.description,
-                total_value: data.total_value,
+                total_value: sanitizeNumber(data.total_value),
                 start_date: data.start_date,
                 end_date: data.end_date,
                 created_by: 1,
@@ -138,13 +129,18 @@ function Contracts() {
             }
 
             await loadData();
+            setShowAddEdit(false);
+
             setResultMessage("Contract saved successfully.");
+            setShowResult(true);
+
         } catch (err) {
             console.error("Failed to save contract:", err);
-            setError("Unable to save contract. Please try again.");
+            setDebugError(String(err?.message || err));
         }
     };
 
+    // DELETE
     const handleDelete = (contract) => {
         setContractToDelete(contract);
         setShowDeleteModal(true);
@@ -154,24 +150,36 @@ function Contracts() {
         try {
             await softDeleteContract(contractToDelete.id);
             await loadData();
+            setShowDeleteModal(false);
+
             setResultMessage("Contract deleted.");
+            setShowResult(true);
+
         } catch (err) {
             console.error("Failed to delete contract:", err);
-            setError("Unable to delete contract. Please try again.");
-        } finally {
-            setShowDeleteModal(false);
+            setError("Unable to delete contract. Please try again later.");
+            setDebugError(String(err?.message || err));
         }
     };
 
+    // SUBMIT CONTRACTS
     const handleSubmitContracts = async () => {
-        setShowSubmitConfirm(false);
-        setResultMessage("Contracts submitted.");
+        try {
+            setShowSubmitConfirm(false);
+
+            setResultMessage("Contracts submitted.");
+            setShowResult(true);
+
+        } catch (err) {
+            console.error("Failed to submit contracts:", err);
+            setError("Unable to submit contracts.");
+            setDebugError(String(err?.message || err));
+        }
     };
 
     return (
         <div className="contracts-page">
             <Header title="Contracts" showBack />
-
             <div className="divider" />
 
             {loading && <p>Loading contracts...</p>}
@@ -204,17 +212,26 @@ function Contracts() {
                                             <td>{formatDate(c.start_date)}</td>
                                             <td>{formatDate(c.end_date)}</td>
                                             <td className="icon-cell">
-                                                <span className="icon" onClick={() => handleView(c)}>📄</span>
-                                                <span className="icon" onClick={() => handleEdit(c)}>✏️</span>
-                                                <span className="icon" onClick={() => handleDelete(c)}>❌</span>
-                                                <span
-                                                    className="icon"
+                                                <Button variant="secondary" onClick={() => handleView(c)}>
+                                                    View
+                                                </Button>
+
+                                                <Button variant="primary" onClick={() => handleEdit(c)}>
+                                                    Edit
+                                                </Button>
+
+                                                <Button variant="danger" onClick={() => handleDelete(c)}>
+                                                    Delete
+                                                </Button>
+
+                                                <Button
+                                                    variant="secondary"
                                                     onClick={() =>
                                                         navigate(`/contracts/${clientId}/milestones/${c.id}`)
                                                     }
                                                 >
-                                                    📌
-                                                </span>
+                                                    Milestones
+                                                </Button>
                                             </td>
                                         </tr>
                                     ))
@@ -224,19 +241,19 @@ function Contracts() {
                     </div>
 
                     <div className="add-container">
-                        <button className="add-btn" onClick={handleAdd}>
-                            Add
-                        </button>
+                        <button className="add-btn" onClick={handleAdd}>Add</button>
                     </div>
 
-                    <div className="submit-container">
-                        <button
-                            className="submit-btn-main"
-                            onClick={() => setShowSubmitConfirm(true)}
-                        >
-                            Submit
-                        </button>
-                    </div>
+                    {contracts.length > 0 && (
+                        <div className="submit-container">
+                            <button
+                                className="submit-btn-main"
+                                onClick={() => setShowSubmitConfirm(true)}
+                            >
+                                Submit
+                            </button>
+                        </div>
+                    )}
                 </>
             )}
 
@@ -269,8 +286,8 @@ function Contracts() {
             <ResultModal
                 message={resultMessage}
                 onClose={() => {
+                    setShowResult(false);
                     setResultMessage("");
-                    loadData();
                 }}
             />
         </div>

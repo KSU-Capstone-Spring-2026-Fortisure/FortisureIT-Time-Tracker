@@ -9,6 +9,7 @@ import Milestones from "./pages/Milestones";
 import BugFeatureRequest from "./pages/BugFeatureRequest";
 
 import { initializeTeams } from "./teams";
+import Documentation from "./pages/Documentation";
 
 function App() {
   const [teamsState, setTeamsState] = useState({
@@ -59,9 +60,11 @@ function App() {
           path="contracts/:clientId/milestones/:contractId"
           element={<Milestones />}
         />
-
         {/* Bugs & Features */}
         <Route path="bugs-and-features" element={<BugFeatureRequest />} />
+
+        {/* Documentation */}
+        <Route path="documentation" element={<Documentation />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import DeleteModal from "../components/DeleteModal";
 import Header from "../components/Header";
 import ResultModal from "../components/ResultModal";
 import MilestoneModal from "./shared/MilestoneModal";
+import Button from "../components/Button";
 
 import {
   getMilestones,
@@ -14,6 +15,7 @@ import {
 } from "../services/api";
 
 import "../css/milestones.css";
+import { sanitizeNumber, sleep } from "./shared/helpers";
 
 const formatDate = (value) => {
   if (!value) return "";
@@ -25,12 +27,12 @@ const formatDate = (value) => {
 };
 
 function Milestones() {
-  const navigate = useNavigate();
   const { clientId, contractId } = useParams();
 
   const [milestones, setMilestones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [debugError, setDebugError] = useState("");
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [milestoneToDelete, setMilestoneToDelete] = useState(null);
@@ -45,6 +47,8 @@ function Milestones() {
     amount: "",
   });
 
+  //controls ResultModal visibility
+  const [showResult, setShowResult] = useState(false);
   const [resultMessage, setResultMessage] = useState("");
 
   useEffect(() => {
@@ -66,12 +70,16 @@ function Milestones() {
     } catch (err) {
       console.error("Failed to load milestones:", err);
       setError("Unable to load milestones. Please try again.");
+      setDebugError(String(err?.message || err));
     } finally {
       setLoading(false);
     }
   };
 
   const updateField = (field, value) => {
+    if (field === "amount") {
+      value = sanitizeNumber(value);
+    }
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -97,6 +105,7 @@ function Milestones() {
     setShowMilestoneModal(true);
   };
 
+  // SAVE
   const handleSubmit = async () => {
     try {
       const payload = {
@@ -104,7 +113,7 @@ function Milestones() {
         milestone_name: form.milestone_name,
         description: form.description,
         due_date: form.due_date,
-        amount: form.amount,
+        amount: sanitizeNumber(form.amount),
       };
 
       if (editingMilestone) {
@@ -116,13 +125,19 @@ function Milestones() {
       await loadMilestones();
       setShowMilestoneModal(false);
       setEditingMilestone(null);
+
+      // Show result modal
       setResultMessage("Milestone saved.");
+      setShowResult(true);
+
     } catch (err) {
       console.error("Failed to save milestone:", err);
       setResultMessage("Unable to save milestone. Please try again.");
+      setShowResult(true);
     }
   };
 
+  // DELETE
   const handleDelete = (m) => {
     setMilestoneToDelete(m);
     setShowDeleteModal(true);
@@ -132,12 +147,16 @@ function Milestones() {
     try {
       await softDeleteMilestone(milestoneToDelete.id);
       await loadMilestones();
+      setShowDeleteModal(false);
+
+      // Show result modal
       setResultMessage("Milestone deleted.");
+      setShowResult(true);
+
     } catch (err) {
       console.error("Failed to delete milestone:", err);
       setError("Unable to delete milestone. Please try again.");
-    } finally {
-      setShowDeleteModal(false);
+      setDebugError(String(err?.message || err));
     }
   };
 
@@ -149,6 +168,7 @@ function Milestones() {
 
         <div className="error-box">
           <p>{error}</p>
+          {debugError && <pre className="debug-error">{debugError}</pre>}
           <button onClick={loadMilestones}>Retry</button>
         </div>
       </div>
@@ -184,12 +204,12 @@ function Milestones() {
                     <td>{formatDate(m.due_date)}</td>
                     <td>{m.description}</td>
                     <td className="icon-cell">
-                      <span className="icon" onClick={() => handleEdit(m)}>
-                        ✏️
-                      </span>
-                      <span className="icon" onClick={() => handleDelete(m)}>
-                        ❌
-                      </span>
+                      <Button variant="primary" pop onClick={() => handleEdit(m)}>
+                        Edit
+                      </Button>
+                      <Button variant="danger" pop onClick={() => handleDelete(m)}>
+                        Delete
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -226,8 +246,8 @@ function Milestones() {
       <ResultModal
         message={resultMessage}
         onClose={() => {
+          setShowResult(false);
           setResultMessage("");
-          navigate(`/contracts/${clientId}`);
         }}
       />
     </div>
