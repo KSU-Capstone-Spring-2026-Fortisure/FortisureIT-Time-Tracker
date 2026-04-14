@@ -261,6 +261,17 @@ app.put("/hours/:id/submit", (req, res) => {
   );
 });
 
+app.put("/hours/:id/submit", (req, res) => {
+  runQuery(
+    res,
+    `UPDATE hourly_entries
+     SET is_submitted = true
+     WHERE id = $1
+     RETURNING *`,
+    [req.params.id]
+  );
+});
+
 app.put("/milestones/:id", (req, res) => {
   const { milestone_name, description, due_date, amount } = req.body;
 
