@@ -20,14 +20,20 @@ function App() {
   useEffect(() => {
     let mounted = true;
 
-    initializeTeams().then((result) => {
-      if (mounted) {
-        setTeamsState(result);
+    async function setupTeams() {
+      const result = await initializeTeams();
 
-        //log for debugging
-        console.log("Teams state:", result);
+      if (!mounted) return;
+
+      setTeamsState(result);
+
+      if (result.inTeams && result.user) {
+        await logTeamsUser(result.user);
       }
-    });
+    }
+
+    setupTeams();
+
 
     return () => {
       mounted = false;

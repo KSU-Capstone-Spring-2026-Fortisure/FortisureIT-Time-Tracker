@@ -8,11 +8,13 @@ export async function initializeTeams() {
     return {
       inTeams: true,
       context,
+      user: context?.user || null,
     };
   } catch (err) {
     return {
       inTeams: false,
       context: null,
+      user: null,
     };
   }
 }
