@@ -7,6 +7,7 @@ import HourlyTracking from "./pages/HourlyTracking";
 import Contracts from "./pages/Contracts";
 import Milestones from "./pages/Milestones";
 import BugFeatureRequest from "./pages/BugFeatureRequest";
+import Documentation from "./pages/Documentation";
 
 import { initializeTeams } from "./teams";
 import { RoleProvider } from "./context/RoleContext";
