@@ -10,6 +10,7 @@ import BugFeatureRequest from "./pages/BugFeatureRequest";
 
 import { initializeTeams } from "./teams";
 import Documentation from "./pages/Documentation";
+import { getAuthToken } from "@microsoft/teams-js/dist/esm/packages/teams-js/dts/public/authentication";
 
 function App() {
   const [teamsState, setTeamsState] = useState({
@@ -29,6 +30,15 @@ function App() {
 
       if (result.inTeams && result.user) {
         await logTeamsUser(result.user);
+
+        await getAuthToken()          .then((token) => {
+            console.log("Auth token:", token);
+          })
+          .catch((error) => {
+            console.error("Error getting auth token:", error);
+          });
+
+          
       }
     }
 
