@@ -1,6 +1,7 @@
 import Header from "../components/Header";
 import FeatureCard from "../components/FeatureCard";
 import "../css/projectTracker.css";
+import { useRole } from "../context/RoleContext";
 
 function ProjectTracker() {
   return (
@@ -19,11 +20,11 @@ function ProjectTracker() {
             state={{ mode: "hourly" }}
           />
 
-          <FeatureCard
+          {role === "Admin" && <FeatureCard
             title="Reporting"
             icon="📈"
             path="/reporting"
-          />
+          />}
 
           <FeatureCard
             title="Contracts"
