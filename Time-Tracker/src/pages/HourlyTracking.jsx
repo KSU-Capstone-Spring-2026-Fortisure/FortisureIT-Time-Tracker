@@ -20,11 +20,14 @@ import {
 
 import { sanitizeNumber, sleep } from "./shared/helpers";
 
+import { useRole } from "../context/RoleContext";
+
 import "../css/hourlytracking.css";
 
 function HourlyTracking() {
     const { clientId } = useParams();
     const navigate = useNavigate();
+    const { role } = useRole();
 
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -55,6 +58,10 @@ function HourlyTracking() {
     const loadEntries = async () => {
         setLoading(true);
         setError("");
+
+        if (role === "Unauthorized") {
+            return <div>You are not authorized to view this page.</div>;
+        }
 
         try {
             const data = await getHours();

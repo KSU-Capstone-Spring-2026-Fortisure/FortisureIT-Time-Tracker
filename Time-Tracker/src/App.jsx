@@ -9,13 +9,14 @@ import Milestones from "./pages/Milestones";
 import BugFeatureRequest from "./pages/BugFeatureRequest";
 
 import { initializeTeams } from "./teams";
-import Documentation from "./pages/Documentation";
-import { getAuthToken } from "@microsoft/teams-js/dist/esm/packages/teams-js/dts/public/authentication";
+import { RoleProvider } from "./context/RoleContext";
+import RoleSelector from "./components/RoleSelector";
 
-function App() {
+function AppContent() {
   const [teamsState, setTeamsState] = useState({
     inTeams: false,
     context: null,
+    user: null,
   });
 
   useEffect(() => {
@@ -25,25 +26,10 @@ function App() {
       const result = await initializeTeams();
 
       if (!mounted) return;
-
       setTeamsState(result);
-
-      if (result.inTeams && result.user) {
-        await logTeamsUser(result.user);
-
-        await getAuthToken()          .then((token) => {
-            console.log("Auth token:", token);
-          })
-          .catch((error) => {
-            console.error("Error getting auth token:", error);
-          });
-
-          
-      }
     }
 
     setupTeams();
-
 
     return () => {
       mounted = false;
@@ -52,37 +38,33 @@ function App() {
 
   return (
     <BrowserRouter>
-      {/* Optional debug banner */}
-      {teamsState.inTeams && (
-        <div style={{ padding: "8px", background: "#eee" }}>
-          Running inside Teams
-        </div>
-      )}
+      <RoleSelector />
 
       <Routes>
         <Route index element={<ProjectTracker />} />
 
-        {/* Client selection */}
         <Route path="clients/:mode" element={<ClientList />} />
 
-        {/* Hourly Tracking */}
         <Route path="hourly/:clientId" element={<HourlyTracking />} />
 
-        {/* Contracts */}
         <Route path="contracts/:clientId" element={<Contracts />} />
 
-        {/* Milestones */}
         <Route
           path="contracts/:clientId/milestones/:contractId"
           element={<Milestones />}
         />
-        {/* Bugs & Features */}
-        <Route path="bugs-and-features" element={<BugFeatureRequest />} />
 
-        {/* Documentation */}
-        <Route path="documentation" element={<Documentation />} />
+        <Route path="bugs-and-features" element={<BugFeatureRequest />} />
       </Routes>
     </BrowserRouter>
+  );
+}
+
+function App() {
+  return (
+    <RoleProvider>
+      <AppContent />
+    </RoleProvider>
   );
 }
 
