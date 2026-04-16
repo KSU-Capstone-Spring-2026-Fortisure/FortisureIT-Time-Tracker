@@ -20,11 +20,11 @@ function ProjectTracker() {
             state={{ mode: "hourly" }}
           />
 
-          {useRole === "Admin" && <FeatureCard
+          <FeatureCard
             title="Reporting"
             icon="📈"
             path="/reporting"
-          />}
+          />
 
           <FeatureCard
             title="Contracts"
