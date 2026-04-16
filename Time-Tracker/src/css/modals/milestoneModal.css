@@ -74,28 +74,3 @@
     filter: invert(0.5);
 }
 
-/* Buttons */
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 10px;
-}
-
-.primary-btn {
-    background: #8b0000;
-    color: white;
-    padding: 10px 24px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-.secondary-btn {
-    background: #b5b5b5; /* grey like contract modal */
-    color: white;
-    padding: 10px 24px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-}

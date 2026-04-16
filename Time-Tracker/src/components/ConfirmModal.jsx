@@ -1,4 +1,5 @@
 import "../css/modals/confirmModal.css";
+import Button from "./Button";
 
 function ConfirmModal({ message, onCancel, onConfirm }) {
   return (
@@ -6,11 +7,13 @@ function ConfirmModal({ message, onCancel, onConfirm }) {
       <div className="modal">
         <p style={{ whiteSpace: "pre-line" }}>{message}</p>
 
-        <div className="modal-actions">
-          <button className="primary-btn" onClick={onConfirm}>
+        <div className="modal-footer spaced">
+          <Button variant="secondary" pop onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={onConfirm}>
             Confirm
-          </button>
-          <button onClick={onCancel}>Cancel</button>
+          </Button>
         </div>
       </div>
     </div>

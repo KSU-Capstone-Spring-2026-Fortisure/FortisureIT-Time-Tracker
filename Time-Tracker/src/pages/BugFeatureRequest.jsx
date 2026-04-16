@@ -5,6 +5,8 @@ import Header from "../components/Header";
 import ResultModal from "../components/ResultModal";
 import ConfirmModal from "../components/ConfirmModal";
 import BugFeatureModal from "./shared/BugFeatureModal";
+import Button from "../components/Button";
+import { sleep } from "./shared/helpers";
 
 import {
   getBugs,
@@ -31,9 +33,17 @@ function BugFeatureRequest() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [itemToComplete, setItemToComplete] = useState(null);
 
+  const [showResult, setShowResult] = useState(false);
   const [resultMessage, setResultMessage] = useState("");
+
   const [error, setError] = useState("");
+  const [debugError, setDebugError] = useState("");
+
   const [loading, setLoading] = useState(true);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 15;
 
   useEffect(() => {
     loadBugs();
@@ -46,9 +56,11 @@ function BugFeatureRequest() {
     try {
       const data = await getBugs();
       setItems(Array.isArray(data) ? data : []);
+      setCurrentPage(1); // reset pagination
     } catch (err) {
       console.error("Failed to load bugs:", err);
       setError("Unable to load requests. Please try again.");
+      setDebugError(String(err?.message || err));
     } finally {
       setLoading(false);
     }
@@ -58,10 +70,7 @@ function BugFeatureRequest() {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // -----------------------------
   // ADD / EDIT
-  // -----------------------------
-
   const handleAdd = () => {
     setEditingItem(null);
     setForm({ title: "", severity: "Low", description: "" });
@@ -78,10 +87,7 @@ function BugFeatureRequest() {
     setShowEditModal(true);
   };
 
-  // -----------------------------
   // MARK COMPLETE
-  // -----------------------------
-
   const openCompleteModal = (item) => {
     setItemToComplete(item);
     setShowConfirmModal(true);
@@ -90,21 +96,28 @@ function BugFeatureRequest() {
   const handleMarkComplete = async () => {
     try {
       await completeBug(itemToComplete.id);
-
       await loadBugs();
+
       setShowConfirmModal(false);
       setItemToComplete(null);
+
+      // Show result modal
       setResultMessage("Request marked as complete.");
+      setShowResult(true);
+
+      await sleep(2000);
+      setShowResult(false);
+      setResultMessage("");
+      navigate("/");
+
     } catch (err) {
       console.error("Failed to mark complete:", err);
       setError("Unable to update request.");
+      setDebugError(String(err?.message || err));
     }
   };
 
-  // -----------------------------
   // SAVE
-  // -----------------------------
-
   const handleSubmit = async () => {
     try {
       if (editingItem) {
@@ -116,17 +129,24 @@ function BugFeatureRequest() {
       await loadBugs();
       setShowEditModal(false);
       setEditingItem(null);
+
+      //Show result modal
       setResultMessage("Request saved successfully.");
+      setShowResult(true);
+
+      await sleep(2000);
+      setShowResult(false);
+      setResultMessage("");
+      navigate("/");
+
     } catch (err) {
       console.error("Failed to submit request:", err);
       setError("Unable to submit request. Please try again.");
+      setDebugError(String(err?.message || err));
     }
   };
 
-  // -----------------------------
   // RENDER
-  // -----------------------------
-
   if (error) {
     return (
       <div className="bug-report">
@@ -135,11 +155,25 @@ function BugFeatureRequest() {
 
         <div className="error-box">
           <p>{error}</p>
+          {debugError && (
+            <pre className="debug-error">{debugError}</pre>
+          )}
           <button onClick={loadBugs}>Retry</button>
         </div>
       </div>
     );
   }
+
+  // Pagination calculations
+  const totalPages = Math.ceil(items.length / pageSize);
+
+  const paginatedItems = items.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  const pageWindow = Array.from({ length: totalPages }, (_, i) => i + 1)
+    .filter((page) => page >= currentPage - 2 && page <= currentPage + 2);
 
   return (
     <div className="bug-report">
@@ -165,19 +199,66 @@ function BugFeatureRequest() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((i) => (
+                  {paginatedItems.map((i) => (
                     <tr key={i.id}>
                       <td>{i.title}</td>
                       <td>{i.severity}</td>
                       <td>{i.description}</td>
                       <td className="icon-cell">
-                        <span className="icon" onClick={() => handleEdit(i)}>✏️</span>
-                        <span className="icon" onClick={() => openCompleteModal(i)}>✅</span>
+                        <Button variant="primary" pop onClick={() => handleEdit(i)}>Edit</Button>
+                        <Button variant="complete" pop onClick={() => openCompleteModal(i)}>Set To Complete</Button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="pagination">
+                  <Button
+                    variant="secondary"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(1)}
+                  >
+                    {"<<"}
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  >
+                    {"<"}
+                  </Button>
+
+                  {pageWindow.map((page) => (
+                    <Button
+                      key={page}
+                      variant={page === currentPage ? "primary" : "secondary"}
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </Button>
+                  ))}
+
+                  <Button
+                    variant="secondary"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    {">"}
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(totalPages)}
+                  >
+                    {">>"}
+                  </Button>
+                </div>
+              )}
 
               <div className="add-container">
                 <button className="add-btn" onClick={handleAdd}>
@@ -189,7 +270,6 @@ function BugFeatureRequest() {
         </div>
       </div>
 
-      {/* EDIT MODAL */}
       {showEditModal && (
         <BugFeatureModal
           form={form}
@@ -200,7 +280,6 @@ function BugFeatureRequest() {
         />
       )}
 
-      {/* CONFIRM COMPLETE MODAL */}
       {showConfirmModal && (
         <ConfirmModal
           message="Are you sure you want to mark this as complete?"
@@ -212,8 +291,8 @@ function BugFeatureRequest() {
       <ResultModal
         message={resultMessage}
         onClose={() => {
+          setShowResult(false);
           setResultMessage("");
-          navigate("/");
         }}
       />
     </div>

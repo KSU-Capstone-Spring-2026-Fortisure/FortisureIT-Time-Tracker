@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import "../../css/modals/modal.css";
+import { sanitizeNumber } from "./helpers";
+import { blockInvalidChars } from "./helpers";
+import Button from "../../components/Button";
 
 function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
   const [formData, setFormData] = useState({
@@ -34,6 +37,16 @@ function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    // Special handling for numeric field
+    if (name === "hours_worked") {
+      const sanitized = sanitizeNumber(value);
+      setFormData((prev) => ({
+        ...prev,
+        [name]: sanitized,
+      }));
+      return;
+    }
 
     setFormData((prev) => ({
       ...prev,
@@ -70,6 +83,11 @@ function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
             <input
               type="number"
               name="hours_worked"
+              min="0"
+              max="9223372036854775807"
+              step="0.01"
+              inputMode="decimal"
+              onKeyDown={blockInvalidChars}
               value={formData.hours_worked}
               onChange={handleChange}
               disabled={isViewMode}
@@ -101,13 +119,14 @@ function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
         </div>
 
         {!isViewMode && (
-          <div className="modal-buttons">
-            <button className="btn-primary" onClick={handleSubmit}>
-              Save
-            </button>
-            <button className="btn-secondary" onClick={onClose}>
+          <div className="modal-footer spaced">
+            <Button variant="secondary" onClick={onClose}>
               Cancel
-            </button>
+            </Button>
+
+            <Button variant="primary" pop onClick={handleSubmit}>
+              Save
+            </Button>
           </div>
         )}
 

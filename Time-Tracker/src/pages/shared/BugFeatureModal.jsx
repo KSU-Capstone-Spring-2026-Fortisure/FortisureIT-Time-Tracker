@@ -1,4 +1,5 @@
 import "../../css/modals/confirmModal.css";
+import Button from "../../components/Button";
 
 function BugFeatureModal({ form, onChange, onSave, onCancel, isEditing }) {
   return (
@@ -36,13 +37,15 @@ function BugFeatureModal({ form, onChange, onSave, onCancel, isEditing }) {
             />
           </div>
         </div>
+        <div className="modal-footer spaced">
+            <Button variant="secondary" onClick={onCancel}>
+              Cancel
+            </Button>
 
-        <div className="modal-actions">
-          <button className="primary-btn" onClick={onSave}>
-            Save
-          </button>
-          <button onClick={onCancel}>Cancel</button>
-        </div>
+            <Button variant="primary" pop onClick={onSave}>
+              Save
+            </Button>
+          </div>
       </div>
     </div>
   );
