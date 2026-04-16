@@ -4,6 +4,7 @@ import ClientCard from "../components/ClientCard";
 import "../css/clientList.css";
 import { useParams } from "react-router-dom";
 import { getClients } from "../services/api";
+import { useRole } from "../context/RoleContext";
 
 function ClientList() {
     const { mode } = useParams();
@@ -11,6 +12,7 @@ function ClientList() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [debugError, setDebugError] = useState("");
+    const { role } = useRole();
 
     useEffect(() => {
         loadClients();
@@ -40,6 +42,10 @@ function ClientList() {
             setLoading(false);
         }
     };
+
+    if (role === "Unauthorized") {
+        return <div>You are not authorized to view this page.</div>;
+    }
 
     return (
         <div className="clientList">

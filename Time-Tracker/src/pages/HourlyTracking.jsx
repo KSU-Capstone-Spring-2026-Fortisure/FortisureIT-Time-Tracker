@@ -51,6 +51,10 @@ function HourlyTracking() {
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 15;
 
+    if (role === "Unauthorized") {
+        return <div>You are not authorized to view this page.</div>;
+    }
+
     useEffect(() => {
         loadEntries();
     }, []);
@@ -58,10 +62,6 @@ function HourlyTracking() {
     const loadEntries = async () => {
         setLoading(true);
         setError("");
-
-        if (role === "Unauthorized") {
-            return <div>You are not authorized to view this page.</div>;
-        }
 
         try {
             const data = await getHours();
