@@ -55,6 +55,8 @@ function AppContent() {
         />
 
         <Route path="bugs-and-features" element={<BugFeatureRequest />} />
+
+        <Route path="documentation" element={<Documentation />} />
       </Routes>
     </BrowserRouter>
   );
