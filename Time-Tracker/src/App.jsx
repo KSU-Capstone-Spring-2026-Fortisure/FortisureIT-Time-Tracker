@@ -7,6 +7,7 @@ import HourlyTracking from "./pages/HourlyTracking";
 import Contracts from "./pages/Contracts";
 import Milestones from "./pages/Milestones";
 import BugFeatureRequest from "./pages/BugFeatureRequest";
+import Documentation from "./pages/Documentation";
 
 import { initializeTeams } from "./teams";
 import { RoleProvider } from "./context/RoleContext";
@@ -52,6 +53,10 @@ function AppContent() {
         <Route
           path="contracts/:clientId/milestones/:contractId"
           element={<Milestones />}
+        />
+        <Route
+          path="documentation"
+          element={<Documentation />}
         />
 
         <Route path="bugs-and-features" element={<BugFeatureRequest />} />
