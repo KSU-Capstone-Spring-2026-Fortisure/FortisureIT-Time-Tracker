@@ -1,31 +1,31 @@
 .timeTracker {
-    padding: 40px;
-    background-color: #f4f4f4;
-    min-height: 100vh;
+  padding: 40px;
+  background-color: #f4f4f4;
+  min-height: 100vh;
 }
 
 .page-title {
-    text-align: center;
+  text-align: center;
 }
 
 .table-container {
-    margin-top: 30px;
-    position: relative;
+  margin-top: 30px;
+  position: relative;
 }
 
 table {
-    width: 100%;
-    border-collapse: collapse;
+  width: 100%;
+  border-collapse: collapse;
 }
 
 th {
-    text-align: left;
-    padding: 10px;
-    font-size: 18px;
+  text-align: left;
+  padding: 10px;
+  font-size: 18px;
 }
 
 td {
-    padding: 10px;
+  padding: 10px;
 }
 
 
@@ -89,7 +89,7 @@ td {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -117,11 +117,19 @@ td {
 }
 
 .debug-error {
-    margin-top: 10px;
-    padding: 10px;
-    color: #ff6b6b;
-    font-family: monospace;
-    white-space: pre-wrap;
-    border-radius: 4px;
-    font-size: 0.85rem;
+  margin-top: 10px;
+  padding: 10px;
+  color: #ff6b6b;
+  font-family: monospace;
+  white-space: pre-wrap;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
 }

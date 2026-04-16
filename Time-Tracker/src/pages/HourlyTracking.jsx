@@ -44,6 +44,10 @@ function HourlyTracking() {
     const [showResult, setShowResult] = useState(false);
     const [resultMessage, setResultMessage] = useState("");
 
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 15;
+
     useEffect(() => {
         loadEntries();
     }, []);
@@ -64,6 +68,7 @@ function HourlyTracking() {
             );
 
             setEntries(filtered);
+            setCurrentPage(1);
         } catch (err) {
             console.error("Failed to load hours:", err);
             setError("Unable to load hourly entries. Please try again.");
@@ -189,6 +194,18 @@ function HourlyTracking() {
         }
     };
 
+    // Pagination calculations
+    const totalPages = Math.ceil(entries.length / pageSize);
+
+    const paginatedEntries = entries.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize
+    );
+
+    // Build windowed page list
+    const pageWindow = Array.from({ length: totalPages }, (_, i) => i + 1)
+        .filter((page) => page >= currentPage - 2 && page <= currentPage + 2);
+
     return (
         <div className="timeTracker">
             <Header title="Hourly Tracking" showBack />
@@ -209,12 +226,12 @@ function HourlyTracking() {
                             </tr>
                         </thead>
                         <tbody>
-                            {entries.length === 0 ? (
+                            {paginatedEntries.length === 0 ? (
                                 <tr>
                                     <td colSpan="5">No entries found.</td>
                                 </tr>
                             ) : (
-                                entries.map((entry) => (
+                                paginatedEntries.map((entry) => (
                                     <tr key={entry.id}>
                                         <td>{entry.work_date?.split("T")[0]}</td>
                                         <td>{entry.hours_worked}</td>
@@ -238,6 +255,53 @@ function HourlyTracking() {
                             )}
                         </tbody>
                     </table>
+
+                    {/* Windowed Pagination */}
+                    {totalPages > 1 && (
+                        <div className="pagination">
+                            <Button
+                                variant="secondary"
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(1)}
+                            >
+                                {"<<"}
+                            </Button>
+
+                            <Button
+                                variant="secondary"
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            >
+                                {"<"}
+                            </Button>
+
+                            {pageWindow.map((page) => (
+                                <Button
+                                    key={page}
+                                    variant={page === currentPage ? "primary" : "secondary"}
+                                    onClick={() => setCurrentPage(page)}
+                                >
+                                    {page}
+                                </Button>
+                            ))}
+
+                            <Button
+                                variant="secondary"
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            >
+                                {">"}
+                            </Button>
+
+                            <Button
+                                variant="secondary"
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage(totalPages)}
+                            >
+                                {">>"}
+                            </Button>
+                        </div>
+                    )}
 
                     <div className="add-container">
                         <Button variant="primary" pop onClick={handleAdd}>
@@ -287,7 +351,6 @@ function HourlyTracking() {
                 />
             )}
 
-            {/* Result modal now closes properly */}
             <ResultModal
                 message={resultMessage}
                 onClose={() => {

@@ -33,7 +33,6 @@ function BugFeatureRequest() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [itemToComplete, setItemToComplete] = useState(null);
 
-  //controls ResultModal visibility
   const [showResult, setShowResult] = useState(false);
   const [resultMessage, setResultMessage] = useState("");
 
@@ -41,6 +40,10 @@ function BugFeatureRequest() {
   const [debugError, setDebugError] = useState("");
 
   const [loading, setLoading] = useState(true);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 15;
 
   useEffect(() => {
     loadBugs();
@@ -53,6 +56,7 @@ function BugFeatureRequest() {
     try {
       const data = await getBugs();
       setItems(Array.isArray(data) ? data : []);
+      setCurrentPage(1); // reset pagination
     } catch (err) {
       console.error("Failed to load bugs:", err);
       setError("Unable to load requests. Please try again.");
@@ -160,6 +164,17 @@ function BugFeatureRequest() {
     );
   }
 
+  // Pagination calculations
+  const totalPages = Math.ceil(items.length / pageSize);
+
+  const paginatedItems = items.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  const pageWindow = Array.from({ length: totalPages }, (_, i) => i + 1)
+    .filter((page) => page >= currentPage - 2 && page <= currentPage + 2);
+
   return (
     <div className="bug-report">
       <Header title="Bugs & Feature Requests" showBack />
@@ -184,7 +199,7 @@ function BugFeatureRequest() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((i) => (
+                  {paginatedItems.map((i) => (
                     <tr key={i.id}>
                       <td>{i.title}</td>
                       <td>{i.severity}</td>
@@ -197,6 +212,53 @@ function BugFeatureRequest() {
                   ))}
                 </tbody>
               </table>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="pagination">
+                  <Button
+                    variant="secondary"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(1)}
+                  >
+                    {"<<"}
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  >
+                    {"<"}
+                  </Button>
+
+                  {pageWindow.map((page) => (
+                    <Button
+                      key={page}
+                      variant={page === currentPage ? "primary" : "secondary"}
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </Button>
+                  ))}
+
+                  <Button
+                    variant="secondary"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    {">"}
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(totalPages)}
+                  >
+                    {">>"}
+                  </Button>
+                </div>
+              )}
 
               <div className="add-container">
                 <button className="add-btn" onClick={handleAdd}>

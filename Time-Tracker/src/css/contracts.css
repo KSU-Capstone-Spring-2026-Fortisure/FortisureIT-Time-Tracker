@@ -1,4 +1,4 @@
-.contracts {
+.contracts-page {
     padding: 40px;
     background-color: #f4f4f4;
     min-height: 100vh;
@@ -64,4 +64,12 @@ td {
     white-space: pre-wrap;
     border-radius: 4px;
     font-size: 0.85rem;
+}
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
 }

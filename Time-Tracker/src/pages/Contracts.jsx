@@ -50,6 +50,10 @@ function Contracts() {
     const [showResult, setShowResult] = useState(false);
     const [resultMessage, setResultMessage] = useState("");
 
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 15;
+
     useEffect(() => {
         loadData();
     }, []);
@@ -75,6 +79,7 @@ function Contracts() {
 
             setContracts(filteredContracts);
             setUsers(safeUsers);
+            setCurrentPage(1); // reset pagination
         } catch (err) {
             console.error("Failed to load contracts:", err);
             setError("Unable to load contracts. Please try again later.");
@@ -136,6 +141,7 @@ function Contracts() {
 
         } catch (err) {
             console.error("Failed to save contract:", err);
+            setError("Unable to save contract. Please try again later.");
             setDebugError(String(err?.message || err));
         }
     };
@@ -177,6 +183,17 @@ function Contracts() {
         }
     };
 
+    // Pagination calculations
+    const totalPages = Math.ceil(contracts.length / pageSize);
+
+    const paginatedContracts = contracts.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize
+    );
+
+    const pageWindow = Array.from({ length: totalPages }, (_, i) => i + 1)
+        .filter((page) => page >= currentPage - 2 && page <= currentPage + 2);
+
     return (
         <div className="contracts-page">
             <Header title="Contracts" showBack />
@@ -199,12 +216,12 @@ function Contracts() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {contracts.length === 0 ? (
+                                {paginatedContracts.length === 0 ? (
                                     <tr>
                                         <td colSpan="6">No contracts found.</td>
                                     </tr>
                                 ) : (
-                                    contracts.map((c) => (
+                                    paginatedContracts.map((c) => (
                                         <tr key={c.id}>
                                             <td>{c.contract_name}</td>
                                             <td>{c.total_value}</td>
@@ -239,6 +256,53 @@ function Contracts() {
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Windowed Pagination */}
+                    {totalPages > 1 && (
+                        <div className="pagination">
+                            <Button
+                                variant="secondary"
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(1)}
+                            >
+                                {"<<"}
+                            </Button>
+
+                            <Button
+                                variant="secondary"
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            >
+                                {"<"}
+                            </Button>
+
+                            {pageWindow.map((page) => (
+                                <Button
+                                    key={page}
+                                    variant={page === currentPage ? "primary" : "secondary"}
+                                    onClick={() => setCurrentPage(page)}
+                                >
+                                    {page}
+                                </Button>
+                            ))}
+
+                            <Button
+                                variant="secondary"
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            >
+                                {">"}
+                            </Button>
+
+                            <Button
+                                variant="secondary"
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage(totalPages)}
+                            >
+                                {">>"}
+                            </Button>
+                        </div>
+                    )}
 
                     <div className="add-container">
                         <button className="add-btn" onClick={handleAdd}>Add</button>
@@ -292,6 +356,7 @@ function Contracts() {
             />
         </div>
     );
+
 }
 
 export default Contracts;

@@ -51,6 +51,10 @@ function Milestones() {
   const [showResult, setShowResult] = useState(false);
   const [resultMessage, setResultMessage] = useState("");
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 15;
+
   useEffect(() => {
     loadMilestones();
   }, []);
@@ -67,6 +71,7 @@ function Milestones() {
           m.is_deleted !== true
       );
       setMilestones(filtered);
+      setCurrentPage(1); // reset pagination
     } catch (err) {
       console.error("Failed to load milestones:", err);
       setError("Unable to load milestones. Please try again.");
@@ -175,6 +180,17 @@ function Milestones() {
     );
   }
 
+  // Pagination calculations
+  const totalPages = Math.ceil(milestones.length / pageSize);
+
+  const paginatedMilestones = milestones.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  const pageWindow = Array.from({ length: totalPages }, (_, i) => i + 1)
+    .filter((page) => page >= currentPage - 2 && page <= currentPage + 2);
+
   return (
     <div className="milestones-page">
       <Header title="Milestones" showBack />
@@ -197,7 +213,7 @@ function Milestones() {
                 </tr>
               </thead>
               <tbody>
-                {milestones.map((m) => (
+                {paginatedMilestones.map((m) => (
                   <tr key={m.id}>
                     <td>{m.milestone_name}</td>
                     <td>{m.amount}</td>
@@ -216,6 +232,53 @@ function Milestones() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="pagination">
+              <Button
+                variant="secondary"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(1)}
+              >
+                {"<<"}
+              </Button>
+
+              <Button
+                variant="secondary"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
+                {"<"}
+              </Button>
+
+              {pageWindow.map((page) => (
+                <Button
+                  key={page}
+                  variant={page === currentPage ? "primary" : "secondary"}
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+
+              <Button
+                variant="secondary"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              >
+                {">"}
+              </Button>
+
+              <Button
+                variant="secondary"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(totalPages)}
+              >
+                {">>"}
+              </Button>
+            </div>
+          )}
 
           <div className="add-button-container">
             <button className="add-button" onClick={handleAdd}>
