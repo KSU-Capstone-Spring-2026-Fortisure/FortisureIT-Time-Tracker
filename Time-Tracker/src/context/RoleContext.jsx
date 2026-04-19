@@ -5,52 +5,52 @@ const RoleContext = createContext(null);
 export const ROLE_OPTIONS = [
   {
     label: "Unauthorized",
-    value: "unauthorized",
+    value: "Unauthorized",
   },
   {
     label: "User4(Hourly)",
-    value: "hourly",
+    value: "Hourly",
   },
   {
     label: "James(Employee)",
-    value: "employee",
+    value: "Employee",
   },
   {
     label: "User5(Contractor)",
-    value: "contractor",
+    value: "Contractor",
   },
   {
     label: "User2(Manager)",
-    value: "manager",
+    value: "Manager",
   },
   {
     label: "Superuser6",
-    value: "admin",
+    value: "Admin",
   },
 ];
 
 export const ROLE_TO_DB_ROLE = {
-  hourly: "Hourly",
-  employee: "User",
-  contractor: "Contract",
-  manager: "Manager",
-  admin: "Admin",
+  Hourly: "Hourly",
+  Employee: "User",
+  Contractor: "Contract",
+  Manager: "Manager",
+  Admin: "Admin",
 };
 
 export const FEATURE_ACCESS = {
-  hourly: ["hourly", "employee", "manager", "admin"],
-  contracts: ["employee", "contractor", "manager", "admin"],
-  reporting: ["admin", "manager"],
-  bugs: ["hourly", "employee", "contractor", "manager", "admin"],
-  documentation: ["hourly", "employee", "contractor", "manager", "admin"],
+  hourly: ["Hourly", "Employee", "Manager", "Admin"],
+  contracts: ["Employee", "Contractor", "Manager", "Admin"],
+  reporting: ["Admin", "Manager"],
+  bugs: ["Hourly", "Employee", "Contractor", "Manager", "Admin"],
+  documentation: ["Hourly", "Employee", "Contractor", "Manager", "Admin"],
 };
 
 export const TEMP_ROLE_USER_IDS = {
-  hourly: 7,
-  employee: 3,
-  contractor: 8,
-  manager: 2,
-  admin: 6,
+  Hourly: 7,
+  Employee: 3,
+  Contractor: 8,
+  Manager: 2,
+  Admin: 6,
 };
 
 export function getTemporaryUserId(role) {
@@ -62,26 +62,26 @@ export function canAccessFeature(role, feature) {
 }
 
 export function isManagerLike(role) {
-  return role === "manager" || role === "admin";
+  return role === "Manager" || role === "Admin";
 }
 
 export function isAuthenticatedRole(role) {
-  return role !== "unauthorized";
+  return role !== "Unauthorized";
 }
 
 function normalizeStoredRole(storedRole) {
-  if (!storedRole) return "unauthorized";
+  if (!storedRole) return "Unauthorized";
 
-  const normalized = storedRole.toLowerCase();
+  const match = ROLE_OPTIONS.find(
+    (option) => option.value.toLowerCase() === storedRole.toLowerCase()
+  );
 
-  const validRole = ROLE_OPTIONS.find((option) => option.value === normalized);
-  return validRole ? validRole.value : "unauthorized";
+  return match ? match.value : "Unauthorized";
 }
 
 export function RoleProvider({ children }) {
   const [role, setRole] = useState(() => {
     const storedRole = localStorage.getItem("devRole");
-    console.log(storedRole);
     return normalizeStoredRole(storedRole);
   });
 
