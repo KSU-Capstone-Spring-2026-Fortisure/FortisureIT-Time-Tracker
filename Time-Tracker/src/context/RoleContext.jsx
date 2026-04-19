@@ -81,6 +81,7 @@ function normalizeStoredRole(storedRole) {
 export function RoleProvider({ children }) {
   const [role, setRole] = useState(() => {
     const storedRole = localStorage.getItem("devRole");
+    console.log(storedRole);
     return normalizeStoredRole(storedRole);
   });
 
