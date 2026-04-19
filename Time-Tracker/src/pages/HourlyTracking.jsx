@@ -55,16 +55,11 @@ const formatWeekLabel = (start, end) => {
 };
 
 const getEntryStatus = (entry) => {
+  if (entry.is_approved) return "approved";
+  if (entry.is_rejected) return "rejected";
+  if (entry.is_submitted || entry.submitted_at) return "submitted";
+
   const normalizedStatus = String(entry.status || "").toLowerCase().trim();
-
-  if (["submitted", "approved", "rejected"].includes(normalizedStatus)) {
-    return normalizedStatus;
-  }
-
-  if (entry.is_submitted || entry.submitted_at) {
-    return "submitted";
-  }
-
   return normalizedStatus || "draft";
 };
 
@@ -112,6 +107,8 @@ function HourlyTracking() {
   const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
   const weekLabel = useMemo(() => formatWeekLabel(weekStart, weekEnd), [weekEnd, weekStart]);
   const currentUserId = getTemporaryUserId(role);
+  const weekStartParam = useMemo(() => toDateInputValue(weekStart), [weekStart]);
+  const weekEndParam = useMemo(() => toDateInputValue(weekEnd), [weekEnd]);
 
   const canContribute = CONTRIBUTOR_ROLES.includes(role);
   const canReview = isManagerLike(role);
@@ -134,20 +131,13 @@ function HourlyTracking() {
         client_id: clientId,
         viewer_role: role,
         viewer_user_id: currentUserId,
+        week_start: weekStartParam,
+        week_end: weekEndParam,
       });
 
       const safeEntries = Array.isArray(data) ? data : [];
       const filteredEntries = safeEntries
         .filter((entry) => String(entry.client_id) === String(clientId))
-        .filter((entry) => {
-          const workDate = parseDateOnly(entry.work_date);
-          return workDate >= weekStart && workDate <= weekEnd;
-        })
-        .filter((entry) => {
-          if (role === "Admin") return true;
-          if (role === "Manager") return entry.user_id != null;
-          return String(entry.user_id) === String(currentUserId);
-        })
         .sort((left, right) => getSortTime(right) - getSortTime(left) || Number(right.id || 0) - Number(left.id || 0));
 
       setEntries(filteredEntries);

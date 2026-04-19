@@ -106,9 +106,9 @@ router.put("/requests/:id/complete", async (req, res) => {
       `UPDATE bug_feature_requests
        SET completed = true,
            status = 'Complete',
-           completed_by = $1,
+           completed_by = $1::int4,
            modified_date = NOW()
-       WHERE id = $2
+       WHERE id = $2::int4
        RETURNING *`,
       [completed_by, req.params.id]
     );

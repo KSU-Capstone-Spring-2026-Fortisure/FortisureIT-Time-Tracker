@@ -56,7 +56,13 @@ const formatDate = (value) => {
   return value.split("T")[0];
 };
 
-const getContractStatus = (contract) => (contract.status || "draft").toLowerCase();
+const getContractStatus = (contract) => {
+  if (contract.is_approved) return "approved";
+  if (contract.is_rejected) return "rejected";
+
+  const normalizedStatus = String(contract.status || "draft").toLowerCase().trim();
+  return normalizedStatus || "draft";
+};
 
 const getSortTime = (record) => {
   const value = record.updated_at || record.created_at || record.start_date;
@@ -85,6 +91,7 @@ function Contracts() {
   const [contractToReview, setContractToReview] = useState(null);
   const [reviewAction, setReviewAction] = useState("approved");
   const [reviewNote, setReviewNote] = useState("");
+  const [reviewScope, setReviewScope] = useState("single");
 
   const [showResult, setShowResult] = useState(false);
   const [resultMessage, setResultMessage] = useState("");
@@ -101,6 +108,8 @@ function Contracts() {
   const weekLabel = useMemo(() => formatWeekLabel(weekStart, weekEnd), [weekEnd, weekStart]);
   const currentUserId = getTemporaryUserId(role);
   const selectedDay = useMemo(() => parseDateOnly(selectedDate), [selectedDate]);
+  const weekStartParam = useMemo(() => toDateInputValue(weekStart), [weekStart]);
+  const weekEndParam = useMemo(() => toDateInputValue(weekEnd), [weekEnd]);
 
   const canContribute = CONTRIBUTOR_ROLES.includes(role);
   const canReview = isManagerLike(role);
@@ -123,6 +132,8 @@ function Contracts() {
         client_id: clientId,
         viewer_role: role,
         viewer_user_id: currentUserId,
+        week_start: weekStartParam,
+        week_end: weekEndParam,
       });
 
       const safeContracts = Array.isArray(contractsData) ? contractsData : [];
@@ -132,11 +143,6 @@ function Contracts() {
           const startDate = parseDateOnly(contract.start_date);
           const endDate = parseDateOnly(contract.end_date || contract.start_date);
           return selectedDay >= startDate && selectedDay <= endDate;
-        })
-        .filter((contract) => {
-          if (role === "Admin") return true;
-          if (role === "Manager") return contract.created_by != null;
-          return String(contract.created_by) === String(currentUserId);
         })
         .sort((left, right) => getSortTime(right) - getSortTime(left) || Number(right.id || 0) - Number(left.id || 0));
 
@@ -183,6 +189,14 @@ function Contracts() {
   const pageWindow = Array.from({ length: totalPages }, (_, index) => index + 1).filter(
     (page) => page >= currentPage - 2 && page <= currentPage + 2
   );
+
+  const resetReviewModal = () => {
+    setShowReviewModal(false);
+    setContractToReview(null);
+    setReviewNote("");
+    setReviewScope("single");
+    setConfirmProgressMessage("");
+  };
 
   const handleSave = async (data) => {
     try {
@@ -255,10 +269,11 @@ function Contracts() {
     }
   };
 
-  const openReviewModal = (contract, action) => {
+  const openReviewModal = (contract, action, scope = "single") => {
     setContractToReview(contract);
+    setReviewScope(scope);
     setReviewAction(action);
-    setReviewNote(contract.rejection_note || "");
+    setReviewNote(contract?.rejection_note || "");
     setConfirmProgressMessage("");
     setShowReviewModal(true);
   };
@@ -269,22 +284,37 @@ function Contracts() {
       return;
     }
 
+    const targets = reviewScope === "all" ? pendingReviewContracts : contractToReview ? [contractToReview] : [];
+
+    if (targets.length === 0) {
+      setError("There are no submitted contracts to review.");
+      return;
+    }
+
     setIsReviewingContract(true);
-    setConfirmProgressMessage(reviewAction === "approved" ? "Approving contract..." : "Rejecting contract...");
 
     try {
-      await reviewContract(contractToReview.id, {
-        status: reviewAction,
-        reviewer_id: currentUserId,
-        rejection_note: reviewAction === "rejected" ? reviewNote.trim() : null,
-      });
+      for (const [index, contract] of targets.entries()) {
+        const verb = reviewAction === "approved" ? "Approving" : "Rejecting";
+        setConfirmProgressMessage(`${verb} contract ${index + 1} of ${targets.length}...`);
+        await reviewContract(contract.id, {
+          status: reviewAction,
+          reviewer_id: currentUserId,
+          rejection_note: reviewAction === "rejected" ? reviewNote.trim() : null,
+        });
+      }
 
       await loadData();
-      setShowReviewModal(false);
-      setContractToReview(null);
-      setReviewNote("");
-      setConfirmProgressMessage("");
-      setResultMessage(reviewAction === "approved" ? "Contract approved." : "Contract rejected and returned to the employee.");
+      resetReviewModal();
+      setResultMessage(
+        reviewAction === "approved"
+          ? targets.length === 1
+            ? "Contract approved."
+            : "All selected contracts approved."
+          : targets.length === 1
+            ? "Contract rejected and returned to the employee."
+            : "All selected contracts were rejected and returned to the employee."
+      );
       setShowResult(true);
     } catch (err) {
       console.error("Failed to review contract:", err);
@@ -350,6 +380,17 @@ function Contracts() {
 
       {!loading && !error ? (
         <>
+          {canReview && pendingReviewContracts.length > 0 ? (
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
+              <Button variant="complete" onClick={() => openReviewModal(null, "approved", "all")}>
+                Approve All
+              </Button>
+              <Button variant="danger" onClick={() => openReviewModal(null, "rejected", "all")}>
+                Reject All
+              </Button>
+            </div>
+          ) : null}
+
           <div className="table-container">
             <table>
               <thead>
@@ -506,12 +547,19 @@ function Contracts() {
 
       {showReviewModal ? (
         <ConfirmModal
-          message={reviewAction === "approved" ? "Approve this contract?" : "Reject this contract and return it to the employee?"}
+          message={
+            reviewScope === "all"
+              ? reviewAction === "approved"
+                ? `Approve all ${pendingReviewContracts.length} submitted contracts?`
+                : `Reject all ${pendingReviewContracts.length} submitted contracts and return them to the employee?`
+              : reviewAction === "approved"
+                ? "Approve this contract?"
+                : "Reject this contract and return it to the employee?"
+          }
           onConfirm={handleReview}
           onCancel={() => {
             if (!isReviewingContract) {
-              setShowReviewModal(false);
-              setConfirmProgressMessage("");
+              resetReviewModal();
             }
           }}
           confirmLabel={
