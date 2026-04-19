@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-const RoleContext = createContext();
+const RoleContext = createContext(null);
 
 export const ROLE_OPTIONS = [
   {
@@ -69,9 +69,19 @@ export function isAuthenticatedRole(role) {
   return role !== "unauthorized";
 }
 
+function normalizeStoredRole(storedRole) {
+  if (!storedRole) return "unauthorized";
+
+  const normalized = storedRole.toLowerCase();
+
+  const validRole = ROLE_OPTIONS.find((option) => option.value === normalized);
+  return validRole ? validRole.value : "unauthorized";
+}
+
 export function RoleProvider({ children }) {
   const [role, setRole] = useState(() => {
-    return localStorage.getItem("devRole") || "unauthorized";
+    const storedRole = localStorage.getItem("devRole");
+    return normalizeStoredRole(storedRole);
   });
 
   useEffect(() => {
@@ -98,5 +108,11 @@ export function RoleProvider({ children }) {
 }
 
 export function useRole() {
-  return useContext(RoleContext);
+  const context = useContext(RoleContext);
+
+  if (!context) {
+    throw new Error("useRole must be used within a RoleProvider");
+  }
+
+  return context;
 }
