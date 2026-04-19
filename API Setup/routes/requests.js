@@ -6,7 +6,7 @@ const { logError } = require("../logger");
 const router = express.Router();
 
 function sendError(res, err, route) {
-  await logError({
+  logError({
     message: err.message,
     stack: err.stack,
     route,

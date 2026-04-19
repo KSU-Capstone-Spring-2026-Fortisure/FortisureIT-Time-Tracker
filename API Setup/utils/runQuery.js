@@ -8,7 +8,7 @@ async function runQuery(res, sql, params = [], route = null) {
   } catch (err) {
     console.error("Database error:", err);
 
-    await logError({
+    logError({
       message: err.message,
       stack: err.stack,
       route,

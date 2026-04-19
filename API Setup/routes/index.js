@@ -13,12 +13,12 @@ router.get("/", (req, res) => {
   res.send("Project Tracker API Running");
 });
 
-// router.use(usersRoutes);
-// router.use(clientsRoutes);
+router.use(usersRoutes);
+router.use(clientsRoutes);
 router.use(contractsRoutes);
-// router.use(milestonesRoutes);
-// router.use(hoursRoutes);
-// router.use(requestsRoutes);
-// router.use(submissionsRoutes);
+router.use(milestonesRoutes);
+router.use(hoursRoutes);
+router.use(requestsRoutes);
+router.use(submissionsRoutes);
 
 module.exports = router;
