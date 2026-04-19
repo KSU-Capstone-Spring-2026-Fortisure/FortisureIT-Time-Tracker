@@ -21,7 +21,7 @@ function RoleSelector() {
       }}
     >
       <label htmlFor="role-select" style={{ fontSize: "14px", fontWeight: 600 }}>
-        Role
+        DevUserSelect
       </label>
       <select
         id="role-select"
@@ -34,8 +34,8 @@ function RoleSelector() {
         }}
       >
         {ROLE_OPTIONS.map((option) => (
-          <option key={option} value={option}>
-            {option}
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </select>
