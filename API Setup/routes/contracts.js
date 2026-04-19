@@ -45,6 +45,9 @@ router.get("/contracts", async (req, res) => {
 
   if (viewerRole === "manager") {
     params.push(viewerUserId);
+    where.push(`c.status = 'submitted'`);
+    where.push(`COALESCE(c.is_approved, false) IS NOT TRUE`);
+    where.push(`COALESCE(c.is_rejected, false) IS NOT TRUE`);
     where.push(`(
       c.created_by = $${params.length}
       OR EXISTS (
@@ -55,9 +58,15 @@ router.get("/contracts", async (req, res) => {
           AND managed.is_deleted IS NOT TRUE
       )
     )`);
-  } else if (viewerRole !== "admin") {
+  } else if (viewerRole === "admin") {
+    where.push(`c.status = 'submitted'`);
+    where.push(`COALESCE(c.is_approved, false) IS NOT TRUE`);
+    where.push(`COALESCE(c.is_rejected, false) IS NOT TRUE`);
+  } else {
     params.push(viewerUserId);
     where.push(`c.created_by = $${params.length}`);
+    where.push(`COALESCE(c.is_approved, false) IS NOT TRUE`);
+    where.push(`c.status <> 'submitted'`);
   }
 
   try {
@@ -101,11 +110,13 @@ router.post("/contracts", async (req, res) => {
          end_date,
          total_value,
          created_by,
+         is_approved,
+         is_rejected,
          status,
          created_at,
          updated_at
        )
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'draft',NOW(),NOW())
+       VALUES ($1,$2,$3,$4,$5,$6,$7,false,false,'draft',NOW(),NOW())
        RETURNING *`,
       [
         client_id,
@@ -136,7 +147,7 @@ router.put("/contracts/:id", async (req, res) => {
            end_date = $4,
            total_value = $5,
            updated_at = NOW()
-       WHERE id = $6
+       WHERE id = $6::int4
        RETURNING *`,
       [
         normalize(contract_name),
@@ -159,12 +170,14 @@ router.put("/contracts/:id/submit", async (req, res) => {
     const result = await pool.query(
       `UPDATE contracts
        SET status = 'submitted',
+           is_approved = false,
+           is_rejected = false,
            submitted_at = NOW(),
            reviewed_at = NULL,
            reviewed_by = NULL,
            rejection_note = NULL,
            updated_at = NOW()
-       WHERE id = $1
+       WHERE id = $1::int4
        RETURNING *`,
       [req.params.id]
     );
@@ -176,19 +189,36 @@ router.put("/contracts/:id/submit", async (req, res) => {
 });
 
 router.put("/contracts/:id/review", async (req, res) => {
-  const { status, reviewer_id, rejection_note } = req.body;
+  const reviewStatus = String(req.body.status || "").toLowerCase().trim();
+  const reviewerId = Number(req.body.reviewer_id) || null;
+  const rejectionNote = normalize(req.body.rejection_note);
 
   try {
     const result = await pool.query(
       `UPDATE contracts
-       SET status = $1,
-           reviewed_by = $2,
+       SET status = CASE
+             WHEN $1::text = 'approved' THEN 'approved'::varchar
+             WHEN $1::text = 'rejected' THEN 'rejected'::varchar
+             ELSE status
+           END,
+           reviewed_by = $2::int4,
            reviewed_at = NOW(),
-           rejection_note = $3,
+           rejection_note = CASE
+             WHEN $1::text = 'rejected' THEN $3::text
+             ELSE NULL
+           END,
+           is_approved = CASE
+             WHEN $1::text = 'approved' THEN true
+             ELSE false
+           END,
+           is_rejected = CASE
+             WHEN $1::text = 'rejected' THEN true
+             ELSE false
+           END,
            updated_at = NOW()
-       WHERE id = $4
+       WHERE id = $4::int4
        RETURNING *`,
-      [status, reviewer_id, normalize(rejection_note), req.params.id]
+      [reviewStatus, reviewerId, rejectionNote, req.params.id]
     );
 
     res.json(result.rows);
@@ -203,7 +233,7 @@ router.put("/contracts/:id/delete", async (req, res) => {
       `UPDATE contracts
        SET is_deleted = true,
            updated_at = NOW()
-       WHERE id = $1
+       WHERE id = $1::int4
        RETURNING *`,
       [req.params.id]
     );
