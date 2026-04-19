@@ -1,7 +1,7 @@
 import "../../css/modals/confirmModal.css";
 import Button from "../../components/Button";
 
-function BugFeatureModal({ form, onChange, onSave, onCancel, isEditing }) {
+function BugFeatureModal({ form, onChange, onSave, onCancel, isEditing, isSaving = false }) {
   return (
     <div className="modal-overlay">
       <div className="modal">
@@ -13,6 +13,7 @@ function BugFeatureModal({ form, onChange, onSave, onCancel, isEditing }) {
             <input
               value={form.title}
               onChange={(e) => onChange("title", e.target.value)}
+              disabled={isSaving}
             />
           </div>
 
@@ -21,6 +22,7 @@ function BugFeatureModal({ form, onChange, onSave, onCancel, isEditing }) {
             <select
               value={form.severity}
               onChange={(e) => onChange("severity", e.target.value)}
+              disabled={isSaving}
             >
               <option>Low</option>
               <option>Medium</option>
@@ -34,18 +36,19 @@ function BugFeatureModal({ form, onChange, onSave, onCancel, isEditing }) {
               rows="4"
               value={form.description}
               onChange={(e) => onChange("description", e.target.value)}
+              disabled={isSaving}
             />
           </div>
         </div>
         <div className="modal-footer spaced">
-            <Button variant="secondary" onClick={onCancel}>
-              Cancel
-            </Button>
+          <Button variant="secondary" onClick={onCancel} disabled={isSaving}>
+            Cancel
+          </Button>
 
-            <Button variant="primary" pop onClick={onSave}>
-              Save
-            </Button>
-          </div>
+          <Button variant="primary" pop onClick={onSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </div>
       </div>
     </div>
   );

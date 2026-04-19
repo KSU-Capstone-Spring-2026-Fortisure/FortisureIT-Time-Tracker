@@ -1,72 +1,55 @@
 const express = require("express");
-const { runQuery } = require("../utils/runQuery");
-const { normalize } = require("../utils/normalize");
+const pool = require("../db/pool");
+const { logError } = require("../logger");
 
 const router = express.Router();
 
-router.get("/requests", (req, res) => {
-  runQuery(
-    res,
-    `SELECT * FROM bug_feature_requests 
-     WHERE completed = false 
-     ORDER BY modified_date DESC`,
-    [],
-    "/requests"
-  );
+function sendError(res, err, route) {
+  await logError({
+    message: err.message,
+    stack: err.stack,
+    route,
+  });
+
+  res.status(500).json({
+    error: err.message,
+    detail: err.detail || null,
+    hint: err.hint || null,
+  });
+}
+
+router.post("/submissions", async (req, res) => {
+  const { user_id } = req.body;
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO hourly_submissions (user_id, submitted_at, is_deleted)
+       VALUES ($1, NOW(), false)
+       RETURNING *`,
+      [user_id]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    sendError(res, err, "/submissions (POST)");
+  }
 });
 
-router.post("/requests", (req, res) => {
-  const { user_id, request_type, title, severity, description } = req.body;
+router.post("/submission-items", async (req, res) => {
+  const { submission_id, hourly_entry_id } = req.body;
 
-  runQuery(
-    res,
-    `INSERT INTO bug_feature_requests(user_id, request_type, title, severity, description)
-     VALUES ($1,$2,$3,$4,$5)
-     RETURNING *`,
-    [
-      user_id,
-      request_type,
-      normalize(title),
-      normalize(severity),
-      normalize(description),
-    ],
-    "/requests (POST)"
-  );
-});
+  try {
+    const result = await pool.query(
+      `INSERT INTO hourly_submission_items (submission_id, hourly_entry_id, is_deleted)
+       VALUES ($1, $2, false)
+       RETURNING *`,
+      [submission_id, hourly_entry_id]
+    );
 
-router.put("/requests/:id", (req, res) => {
-  const { title, severity, description } = req.body;
-
-  runQuery(
-    res,
-    `UPDATE bug_feature_requests
-     SET title=$1,
-         severity=$2,
-         description=$3,
-         modified_date = NOW()
-     WHERE id=$4
-     RETURNING *`,
-    [
-      normalize(title),
-      normalize(severity),
-      normalize(description),
-      req.params.id,
-    ],
-    "/requests/:id (PUT)"
-  );
-});
-
-router.put("/requests/:id/complete", (req, res) => {
-  runQuery(
-    res,
-    `UPDATE bug_feature_requests
-     SET completed = true,
-         modified_date = NOW()
-     WHERE id = $1
-     RETURNING *`,
-    [req.params.id],
-    "/requests/:id/complete (PUT)"
-  );
+    res.json(result.rows);
+  } catch (err) {
+    sendError(res, err, "/submission-items (POST)");
+  }
 });
 
 module.exports = router;

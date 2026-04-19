@@ -1,28 +1,23 @@
-// logger.js
-const { pool } = require("./server").pool;
+const pool = require("./db/pool");
 
-async function logError({ message, stack, route }) {
+async function writeLog(level, message, stack, route) {
   try {
     await pool.query(
       `INSERT INTO logs (level, message, stack_trace, route)
        VALUES ($1, $2, $3, $4)`,
-      ["error", message, stack, route]
+      [level, message, stack, route]
     );
   } catch (err) {
-    console.error("Failed to write log:", err.message);
+    console.error(`Failed to write ${level} log:`, err.message);
   }
 }
 
-async function logInfo(message, route = null) {
-  try {
-    await pool.query(
-      `INSERT INTO logs (level, message, route)
-       VALUES ($1, $2, $3)`,
-      ["info", message, route]
-    );
-  } catch (err) {
-    console.error("Failed to write info log:", err.message);
-  }
+function logError({ message, stack, route }) {
+  return writeLog("error", message, stack, route);
+}
+
+function logInfo(message, route = null) {
+  return writeLog("info", message, null, route);
 }
 
 module.exports = { logError, logInfo };
