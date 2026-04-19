@@ -8,7 +8,7 @@ function RoleSelector() {
 
     const selectedOption = ROLE_OPTIONS.find(
       (option) => option.label === selectedValue
-    ).value;
+    );
 
     if (selectedOption) {
       setRole(selectedOption.value); // or pass full object if you want later
