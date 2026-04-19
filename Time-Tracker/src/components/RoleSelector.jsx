@@ -35,7 +35,7 @@ function RoleSelector() {
       >
         {ROLE_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
-            {option}
+            {option.label}
           </option>
         ))}
       </select>
