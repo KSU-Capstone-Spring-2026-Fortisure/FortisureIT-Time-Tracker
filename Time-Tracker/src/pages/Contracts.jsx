@@ -247,6 +247,7 @@ function Contracts() {
   const pageWindow = Array.from({ length: totalPages }, (_, index) => index + 1).filter(
     (page) => page >= currentPage - 2 && page <= currentPage + 2
   );
+  const weeklyContractTotal = displayedContracts.reduce((sum, contract) => sum + Number(contract.total_value || 0), 0);
 
   const handleSave = async (data) => {
     try {
@@ -433,6 +434,8 @@ function Contracts() {
           </div>
         </div>
       </div>
+
+      <div style={{ marginBottom: "12px", fontWeight: 600 }}>Weekly total: {weeklyContractTotal.toFixed(2)}</div>
 
       {error ? (
         <div className="error-box">
@@ -653,6 +656,7 @@ function Contracts() {
 }
 
 export default Contracts;
+
 
 
 

@@ -3,7 +3,16 @@ import "../../css/modals/milestoneModal.css";
 import { blockInvalidChars } from "./helpers";
 import Button from "../../components/Button";
 
-function MilestoneModal({ form, onChange, onSave, onCancel, isEditing, isSaving = false }) {
+function MilestoneModal({
+  form,
+  onChange,
+  onSave,
+  onCancel,
+  isEditing,
+  isSaving = false,
+  isViewMode = false,
+  errorMessage = "",
+}) {
   const handleAmountChange = (e) => {
     const raw = e.target.value;
     const sanitized = sanitizeNumber(raw);
@@ -13,7 +22,7 @@ function MilestoneModal({ form, onChange, onSave, onCancel, isEditing, isSaving 
   return (
     <div className="modal-overlay">
       <div className="modal">
-        <h3>{isEditing ? "Edit Milestone" : "Add Milestone"}</h3>
+        <h3>{isViewMode ? "View Milestone" : isEditing ? "Edit Milestone" : "Add Milestone"}</h3>
 
         <div className="form-grid">
           <div className="form-row">
@@ -21,7 +30,7 @@ function MilestoneModal({ form, onChange, onSave, onCancel, isEditing, isSaving 
             <input
               value={form.milestone_name}
               onChange={(e) => onChange("milestone_name", e.target.value)}
-              disabled={isSaving}
+              disabled={isSaving || isViewMode}
             />
           </div>
 
@@ -30,7 +39,7 @@ function MilestoneModal({ form, onChange, onSave, onCancel, isEditing, isSaving 
             <textarea
               value={form.description}
               onChange={(e) => onChange("description", e.target.value)}
-              disabled={isSaving}
+              disabled={isSaving || isViewMode}
             />
           </div>
 
@@ -40,7 +49,7 @@ function MilestoneModal({ form, onChange, onSave, onCancel, isEditing, isSaving 
               type="date"
               value={form.due_date}
               onChange={(e) => onChange("due_date", e.target.value)}
-              disabled={isSaving}
+              disabled={isSaving || isViewMode}
             />
           </div>
 
@@ -55,19 +64,23 @@ function MilestoneModal({ form, onChange, onSave, onCancel, isEditing, isSaving 
               onKeyDown={blockInvalidChars}
               value={form.amount}
               onChange={handleAmountChange}
-              disabled={isSaving}
+              disabled={isSaving || isViewMode}
             />
           </div>
         </div>
 
+        {errorMessage ? <p style={{ color: "#b91c1c", fontWeight: 600 }}>{errorMessage}</p> : null}
+
         <div className="modal-footer spaced">
           <Button variant="secondary" onClick={onCancel} disabled={isSaving}>
-            Cancel
+            {isViewMode ? "Close" : "Cancel"}
           </Button>
 
-          <Button variant="primary" pop onClick={onSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
+          {!isViewMode ? (
+            <Button variant="primary" pop onClick={onSave} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>

@@ -103,8 +103,8 @@ export const markHourSubmitted = (id, data = {}) => put(`hours/${id}/submit`, da
 export const reviewHourEntry = (id, data) => put(`hours/${id}/review`, data);
 export const submitContract = (id, data = {}) => put(`contracts/${id}/submit`, data);
 export const reviewContract = (id, data) => put(`contracts/${id}/review`, data);
+export const reviewMilestone = (id, data) => put(`milestones/${id}/review`, data);
 
 export const softDeleteContract = (id) => put(`contracts/${id}/delete`, {});
 export const softDeleteMilestone = (id) => put(`milestones/${id}/delete`, {});
 export const softDeleteHour = (id) => put(`hours/${id}/delete`, {});
-
