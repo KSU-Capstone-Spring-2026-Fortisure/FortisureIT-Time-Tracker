@@ -8,7 +8,6 @@ import Button from "../components/Button";
 
 import {
   getBugs,
-  getUsers,
   createBug,
   updateBug,
   completeBug,
@@ -17,13 +16,9 @@ import {
 import { useRole } from "../context/RoleContext";
 import "../css/bugfeaturerequest.css";
 
-const roleMatchesUser = (user, role) =>
-  String(user?.role_name || "").toLowerCase() === String(role || "").toLowerCase();
-
 function BugFeatureRequest() {
-  const { role, isManagerLike } = useRole();
+  const { role, isManagerLike, currentUser, currentUserId, loadingUsers } = useRole();
   const [items, setItems] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
   const [form, setForm] = useState({
     title: "",
     severity: "Low",
@@ -48,24 +43,21 @@ function BugFeatureRequest() {
   const canComplete = isManagerLike(role);
 
   useEffect(() => {
+    if (loadingUsers || !currentUserId) {
+      return;
+    }
+
     loadBugs();
-  }, [role]);
+  }, [currentUserId, loadingUsers, role]);
 
   const loadBugs = async () => {
     setLoading(true);
     setError("");
 
     try {
-      const users = await getUsers();
-      const viewer = Array.isArray(users)
-        ? users.find((user) => roleMatchesUser(user, role)) || users[0]
-        : null;
-
-      setCurrentUser(viewer || null);
-
       const data = await getBugs({
         viewer_role: role,
-        viewer_user_id: viewer?.id,
+        viewer_user_id: currentUserId,
       });
 
       setItems(Array.isArray(data) ? data : []);
@@ -112,7 +104,7 @@ function BugFeatureRequest() {
 
     try {
       await completeBug(itemToComplete.id, {
-        completed_by: currentUser?.id,
+        completed_by: currentUserId,
         viewer_role: role,
       });
       await loadBugs();
@@ -137,12 +129,12 @@ function BugFeatureRequest() {
       if (editingItem) {
         await updateBug(editingItem.id, {
           ...form,
-          viewer_user_id: currentUser?.id,
+          viewer_user_id: currentUserId,
           viewer_role: role,
         });
       } else {
         await createBug({
-          user_id: currentUser?.id,
+          user_id: currentUserId,
           request_type: "Bug",
           title: form.title,
           severity: form.severity,
@@ -167,10 +159,10 @@ function BugFeatureRequest() {
   const rows = useMemo(() => {
     return items.map((item) => ({
       ...item,
-      canEdit: !canComplete && String(item.user_id) === String(currentUser?.id),
+      canEdit: !canComplete && String(item.user_id) === String(currentUserId),
       canComplete,
     }));
-  }, [canComplete, currentUser?.id, items]);
+  }, [canComplete, currentUserId, items]);
 
   if (error) {
     return (
@@ -196,9 +188,9 @@ function BugFeatureRequest() {
         <div className="bug-container">
           <h2>Submitted Requests</h2>
 
-          {loading && <p>Loading requests...</p>}
+          {(loading || loadingUsers) && <p>Loading requests...</p>}
 
-          {!loading && (
+          {!loading && !loadingUsers && (
             <>
               <table>
                 <thead>

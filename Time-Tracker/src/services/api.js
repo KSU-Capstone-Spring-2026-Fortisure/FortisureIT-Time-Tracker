@@ -71,23 +71,26 @@ function put(endpoint, body) {
   });
 }
 
+export const getUiConfig = () => safeFetch(`${BASE_URL}/ui-config`);
 export const getUsers = () => safeFetch(`${BASE_URL}/users`);
-export const getClients = (params = {}) =>
-  safeFetch(`${BASE_URL}/clients${buildQueryString(params)}`);
-export const getContracts = (params = {}) =>
-  safeFetch(`${BASE_URL}/contracts${buildQueryString(params)}`);
-export const getMilestones = () => safeFetch(`${BASE_URL}/milestones`);
-export const getHours = (params = {}) =>
-  safeFetch(`${BASE_URL}/hours${buildQueryString(params)}`);
-export const getBugs = (params = {}) =>
-  safeFetch(`${BASE_URL}/requests${buildQueryString(params)}`);
+export const getAuthenticatedUser = ({ authToken, loginHint } = {}) =>
+  safeFetch(`${BASE_URL}/auth/me`, {
+    headers: {
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      ...(loginHint ? { "X-Teams-Login-Hint": loginHint } : {}),
+    },
+  });
+export const getClients = (params = {}) => safeFetch(`${BASE_URL}/clients${buildQueryString(params)}`);
+export const getContracts = (params = {}) => safeFetch(`${BASE_URL}/contracts${buildQueryString(params)}`);
+export const getMilestones = (params = {}) => safeFetch(`${BASE_URL}/milestones${buildQueryString(params)}`);
+export const getHours = (params = {}) => safeFetch(`${BASE_URL}/hours${buildQueryString(params)}`);
+export const getBugs = (params = {}) => safeFetch(`${BASE_URL}/requests${buildQueryString(params)}`);
 
 export const createContract = (data) => post("contracts", data);
 export const createMilestone = (data) => post("milestones", data);
 export const createHourEntry = (data) => post("hours", data);
 export const createSubmission = (data) => post("submissions", data);
 export const createSubmissionItem = (data) => post("submission-items", data);
-
 export const createBug = (data) => post("requests", data);
 
 export const updateContract = (id, data) => put(`contracts/${id}`, data);
@@ -104,3 +107,4 @@ export const reviewContract = (id, data) => put(`contracts/${id}/review`, data);
 export const softDeleteContract = (id) => put(`contracts/${id}/delete`, {});
 export const softDeleteMilestone = (id) => put(`milestones/${id}/delete`, {});
 export const softDeleteHour = (id) => put(`hours/${id}/delete`, {});
+

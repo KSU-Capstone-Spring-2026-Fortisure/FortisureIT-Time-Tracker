@@ -1,7 +1,11 @@
 import { useRole } from "../context/RoleContext";
 
 function RoleSelector() {
-  const { role, setRole, ROLE_OPTIONS } = useRole();
+  const { loadingUsers, selectedUserId, setCurrentUserId, ROLE_OPTIONS, canUseDevUserSwitching } = useRole();
+
+  if (!canUseDevUserSwitching) {
+    return null;
+  }
 
   return (
     <div
@@ -26,8 +30,9 @@ function RoleSelector() {
 
       <select
         id="role-select"
-        value={role}
-        onChange={(e) => setRole(e.target.value)}
+        value={selectedUserId}
+        onChange={(e) => setCurrentUserId(e.target.value)}
+        disabled={loadingUsers}
         style={{
           padding: "4px 8px",
           borderRadius: "6px",

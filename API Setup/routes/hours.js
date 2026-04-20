@@ -43,6 +43,17 @@ router.get("/hours", async (req, res) => {
     where.push(`h.work_date <= $${params.length}`);
   }
 
+  if (viewerRole !== "admin") {
+    params.push(viewerUserId);
+    where.push(`EXISTS (
+      SELECT 1
+      FROM user_client_access viewer_access
+      WHERE viewer_access.client_id = h.client_id
+        AND viewer_access.user_id = $${params.length}
+        AND viewer_access.is_deleted IS NOT TRUE
+    )`);
+  }
+
   if (viewerRole === "manager") {
     params.push(viewerUserId);
     where.push(`(
