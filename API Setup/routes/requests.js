@@ -21,6 +21,7 @@ function sendError(res, err, route) {
 
 router.get("/requests", async (req, res) => {
   try {
+    const includeCompleted = String(req.query.include_completed || "").toLowerCase() === "true";
     const result = await pool.query(
       `SELECT
          r.*,
@@ -28,7 +29,9 @@ router.get("/requests", async (req, res) => {
        FROM bug_feature_requests r
        LEFT JOIN users u ON u.id = r.user_id
        WHERE r.is_deleted IS NOT TRUE
-       ORDER BY r.completed ASC, r.modified_date DESC, r.created_at DESC`
+         AND ($1::boolean IS TRUE OR COALESCE(r.completed, false) IS NOT TRUE)
+       ORDER BY r.completed ASC, r.modified_date DESC, r.created_at DESC`,
+      [includeCompleted]
     );
 
     res.json(result.rows);

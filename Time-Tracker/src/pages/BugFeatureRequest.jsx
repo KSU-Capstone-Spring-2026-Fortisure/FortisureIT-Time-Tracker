@@ -56,6 +56,7 @@ function BugFeatureRequest() {
 
     try {
       const data = await getBugs({
+        include_completed: false,
         viewer_role: role,
         viewer_user_id: currentUserId,
       });
