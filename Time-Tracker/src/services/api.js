@@ -108,3 +108,4 @@ export const reviewMilestone = (id, data) => put(`milestones/${id}/review`, data
 export const softDeleteContract = (id) => put(`contracts/${id}/delete`, {});
 export const softDeleteMilestone = (id) => put(`milestones/${id}/delete`, {});
 export const softDeleteHour = (id) => put(`hours/${id}/delete`, {});
+
