@@ -175,17 +175,17 @@ export function RoleProvider({ children }) {
 
   const baseUser = authenticatedUser || devCurrentUser;
   const baseRole = useMemo(() => mapDbRoleToAppRole(baseUser?.role_name), [baseUser?.role_name]);
-  const canManageImpersonation = baseRole === "Admin";
+  const baseCanManageImpersonation = baseRole === "Admin";
 
   const normalizedImpersonatedUserId = useMemo(() => {
-    if (!canManageImpersonation || !impersonatedUserId) {
+    if (!baseCanManageImpersonation || !impersonatedUserId) {
       return "";
     }
 
     return users.some((user) => String(user.id) === String(impersonatedUserId))
       ? String(impersonatedUserId)
       : "";
-  }, [canManageImpersonation, impersonatedUserId, users]);
+  }, [baseCanManageImpersonation, impersonatedUserId, users]);
 
   useEffect(() => {
     if (normalizedImpersonatedUserId === impersonatedUserId) {
@@ -201,7 +201,7 @@ export function RoleProvider({ children }) {
   }, [impersonatedUserId, normalizedImpersonatedUserId]);
 
   const impersonatedUser = useMemo(() => {
-    if (!normalizedImpersonatedUserId || !canManageImpersonation) {
+    if (!normalizedImpersonatedUserId || !baseCanManageImpersonation) {
       return null;
     }
 
@@ -211,10 +211,11 @@ export function RoleProvider({ children }) {
     }
 
     return match;
-  }, [baseUser?.id, canManageImpersonation, normalizedImpersonatedUserId, users]);
+  }, [baseUser?.id, baseCanManageImpersonation, normalizedImpersonatedUserId, users]);
 
   const currentUser = impersonatedUser || baseUser;
   const role = useMemo(() => mapDbRoleToAppRole(currentUser?.role_name), [currentUser?.role_name]);
+  const canManageImpersonation = baseCanManageImpersonation || role === "Admin";
   const ROLE_OPTIONS = useMemo(() => buildRoleOptions(users), [users]);
   const managedUserIds = useMemo(() => {
     if (!currentUser) return [];
@@ -231,7 +232,7 @@ export function RoleProvider({ children }) {
   };
 
   const setImpersonation = (userId) => {
-    if (!canManageImpersonation) {
+    if (!baseCanManageImpersonation) {
       return;
     }
 

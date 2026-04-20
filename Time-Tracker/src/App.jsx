@@ -47,9 +47,6 @@ function AppContent() {
   const [uiConfig, setUiConfig] = useState({
     showDevUserSwitcher: false,
   });
-  const [uiConfig, setUiConfig] = useState({
-    showDevUserSwitcher: false,
-  });
 
   useEffect(() => {
     let mounted = true;

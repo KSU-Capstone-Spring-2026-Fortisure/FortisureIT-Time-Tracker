@@ -13,8 +13,8 @@ function Header({ title, showBack = false }) {
     : `User: ${displayIdentity}`;
 
   return (
-    <header className="header">
-      <div className="left-section">
+    <header className="app-header">
+      <div className="app-header-left">
         {showBack ? (
           <button className="back-btn" onClick={() => navigate(-1)}>
             &lt;
@@ -24,9 +24,9 @@ function Header({ title, showBack = false }) {
         <img src={logo} alt="Logo" className="logo-img" onClick={() => navigate("/")} />
       </div>
 
-      <h1 className="header-title">{title}</h1>
+      <h1 className="app-header-title">{title}</h1>
 
-      <div className="right-section">
+      <div className="app-header-right">
         <span className="user-pill">{identityLabel}</span>
         {isImpersonating ? (
           <button className="undo-impersonation-btn" onClick={clearImpersonation}>
