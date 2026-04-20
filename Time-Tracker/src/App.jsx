@@ -8,6 +8,7 @@ import Contracts from "./pages/Contracts";
 import Milestones from "./pages/Milestones";
 import BugFeatureRequest from "./pages/BugFeatureRequest";
 import Documentation from "./pages/Documentation";
+import Impersonation from "./pages/Impersonation";
 
 import { initializeTeams } from "./teams";
 import { getUiConfig } from "./services/api";
@@ -28,11 +29,23 @@ function ProtectedRoute({ feature, children }) {
   return children;
 }
 
+function AdminToolsRoute({ children }) {
+  const { canManageImpersonation, loadingUsers } = useRole();
+
+  if (loadingUsers) {
+    return <p>Loading user access...</p>;
+  }
+
+  if (!canManageImpersonation) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
+
 function AppContent() {
-  const [teamsState, setTeamsState] = useState({
-    inTeams: false,
-    context: null,
-    user: null,
+  const [uiConfig, setUiConfig] = useState({
+    showDevUserSwitcher: false,
   });
   const [uiConfig, setUiConfig] = useState({
     showDevUserSwitcher: false,
@@ -43,18 +56,13 @@ function AppContent() {
 
     async function setupApp() {
       try {
-        const [teamsResult, uiConfigResult] = await Promise.all([initializeTeams(), getUiConfig()]);
+        await initializeTeams();
+        const uiConfigResult = await getUiConfig();
 
         if (!mounted) return;
-        setTeamsState(teamsResult);
         setUiConfig((current) => ({ ...current, ...(uiConfigResult || {}) }));
       } catch (error) {
         console.error("Failed to load app config:", error);
-
-        if (!mounted) return;
-        const teamsResult = await initializeTeams();
-        if (!mounted) return;
-        setTeamsState(teamsResult);
       }
     }
 
@@ -94,6 +102,14 @@ function AppContent() {
             <ProtectedRoute feature="contracts">
               <Milestones />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="impersonation"
+          element={
+            <AdminToolsRoute>
+              <Impersonation />
+            </AdminToolsRoute>
           }
         />
         <Route

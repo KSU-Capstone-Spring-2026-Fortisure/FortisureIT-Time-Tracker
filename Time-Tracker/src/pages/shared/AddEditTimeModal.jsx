@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import "../../css/modals/modal.css";
-import { sanitizeNumber } from "./helpers";
-import { blockInvalidChars } from "./helpers";
+import { sanitizeNumber, blockInvalidChars } from "./helpers";
 import Button from "../../components/Button";
 
 function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
@@ -12,6 +11,7 @@ function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
     is_billable: false,
     notes: "",
   });
+  const [validationError, setValidationError] = useState("");
 
   useEffect(() => {
     if (record) {
@@ -31,6 +31,8 @@ function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
         notes: "",
       });
     }
+
+    setValidationError("");
   }, [record]);
 
   if (!isOpen) return null;
@@ -38,13 +40,13 @@ function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    // Special handling for numeric field
     if (name === "hours_worked") {
       const sanitized = sanitizeNumber(value);
       setFormData((prev) => ({
         ...prev,
         [name]: sanitized,
       }));
+      setValidationError("");
       return;
     }
 
@@ -54,17 +56,32 @@ function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
     }));
   };
 
-  const handleSubmit = () => {
-    onSave(formData);
-    onClose();
+  const handleSubmit = async () => {
+    const hoursWorked = Number(formData.hours_worked || 0);
+
+    if (!formData.work_date) {
+      setValidationError("A work date is required.");
+      return;
+    }
+
+    if (!Number.isFinite(hoursWorked) || hoursWorked <= 0) {
+      setValidationError("Hours worked must be greater than 0.");
+      return;
+    }
+
+    if (hoursWorked > 24) {
+      setValidationError("A single time entry cannot exceed 24 hours in one day.");
+      return;
+    }
+
+    setValidationError("");
+    await onSave(formData);
   };
 
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h2>
-          {isViewMode ? "View Hours" : record ? "Edit Hours" : "Add Hours"}
-        </h2>
+        <h2>{isViewMode ? "View Hours" : record ? "Edit Hours" : "Add Hours"}</h2>
 
         <div className="form-grid">
           <div className="form-row">
@@ -84,7 +101,7 @@ function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
               type="number"
               name="hours_worked"
               min="0"
-              max="9223372036854775807"
+              max="24"
               step="0.01"
               inputMode="decimal"
               onKeyDown={blockInvalidChars}
@@ -110,15 +127,12 @@ function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
 
         <div className="form-row">
           <label>Notes</label>
-          <textarea
-            name="notes"
-            value={formData.notes}
-            onChange={handleChange}
-            disabled={isViewMode}
-          />
+          <textarea name="notes" value={formData.notes} onChange={handleChange} disabled={isViewMode} />
         </div>
 
-        {!isViewMode && (
+        {validationError ? <p style={{ color: "#b91c1c", fontWeight: 600 }}>{validationError}</p> : null}
+
+        {!isViewMode ? (
           <div className="modal-footer spaced">
             <Button variant="secondary" onClick={onClose}>
               Cancel
@@ -128,9 +142,7 @@ function AddEditModal({ isOpen, onClose, onSave, record, isViewMode }) {
               Save
             </Button>
           </div>
-        )}
-
-        {isViewMode && (
+        ) : (
           <button className="btn-secondary" onClick={onClose}>
             Close
           </button>

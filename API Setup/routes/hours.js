@@ -12,11 +12,27 @@ function sendError(res, err, route) {
     route,
   });
 
-  res.status(500).json({
+  res.status(err.status || 500).json({
     error: err.message,
     detail: err.detail || null,
     hint: err.hint || null,
   });
+}
+
+function validateHoursWorked(hoursWorked) {
+  const value = Number(hoursWorked);
+
+  if (!Number.isFinite(value) || value <= 0) {
+    const error = new Error("Hours worked must be greater than 0.");
+    error.status = 400;
+    throw error;
+  }
+
+  if (value > 24) {
+    const error = new Error("A single time entry cannot exceed 24 hours in one day.");
+    error.status = 400;
+    throw error;
+  }
 }
 
 router.get("/hours", async (req, res) => {
@@ -95,6 +111,8 @@ router.post("/hours", async (req, res) => {
   const { user_id, client_id, work_date, hours_worked, notes, is_billable } = req.body;
 
   try {
+    validateHoursWorked(hours_worked);
+
     const result = await pool.query(
       `INSERT INTO hourly_entries (
          user_id,
@@ -130,6 +148,8 @@ router.put("/hours/:id", async (req, res) => {
   const { work_date, hours_worked, notes, is_billable } = req.body;
 
   try {
+    validateHoursWorked(hours_worked);
+
     const result = await pool.query(
       `UPDATE hourly_entries
        SET work_date = $1,

@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import "../../css/modals/modal.css";
-import { sanitizeNumber } from "./helpers";
-import { blockInvalidChars } from "./helpers";
+import { sanitizeNumber, blockInvalidChars } from "./helpers";
 import Button from "../../components/Button";
 
 function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
@@ -37,9 +36,8 @@ function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = () => {
-    onSave(form);
-    onClose();
+  const handleSubmit = async () => {
+    await onSave(form);
   };
 
   if (!isOpen) return null;
@@ -47,22 +45,12 @@ function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h2>
-          {isViewMode
-            ? "View Contract"
-            : record
-              ? "Edit Contract"
-              : "Add Contract"}
-        </h2>
+        <h2>{isViewMode ? "View Contract" : record ? "Edit Contract" : "Add Contract"}</h2>
 
         <div className="form-grid">
           <div className="form-row">
             <label>Contract Name</label>
-            <input
-              disabled={isViewMode}
-              value={form.contract_name}
-              onChange={(e) => update("contract_name", e.target.value)}
-            />
+            <input disabled={isViewMode} value={form.contract_name} onChange={(e) => update("contract_name", e.target.value)} />
           </div>
 
           <div className="form-row">
@@ -74,7 +62,7 @@ function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
               max="9223372036854775807"
               step="0.01"
               inputMode="decimal"
-              onKeyDown={blockInvalidChars} 
+              onKeyDown={blockInvalidChars}
               value={form.total_value}
               onChange={(e) => update("total_value", sanitizeNumber(e.target.value))}
             />
@@ -82,35 +70,21 @@ function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
 
           <div className="form-row">
             <label>Description</label>
-            <textarea
-              disabled={isViewMode}
-              value={form.description}
-              onChange={(e) => update("description", e.target.value)}
-            />
+            <textarea disabled={isViewMode} value={form.description} onChange={(e) => update("description", e.target.value)} />
           </div>
 
           <div className="form-row">
             <label>Start Date</label>
-            <input
-              type="date"
-              disabled={isViewMode}
-              value={form.start_date}
-              onChange={(e) => update("start_date", e.target.value)}
-            />
+            <input type="date" disabled={isViewMode} value={form.start_date} onChange={(e) => update("start_date", e.target.value)} />
           </div>
 
           <div className="form-row">
             <label>End Date</label>
-            <input
-              type="date"
-              disabled={isViewMode}
-              value={form.end_date}
-              onChange={(e) => update("end_date", e.target.value)}
-            />
+            <input type="date" disabled={isViewMode} value={form.end_date} onChange={(e) => update("end_date", e.target.value)} />
           </div>
         </div>
 
-        {!isViewMode && (
+        {!isViewMode ? (
           <div className="modal-footer spaced">
             <Button variant="secondary" onClick={onClose}>
               Cancel
@@ -120,9 +94,7 @@ function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
               Save
             </Button>
           </div>
-        )}
-
-        {isViewMode && (
+        ) : (
           <button className="btn-secondary" onClick={onClose}>
             Close
           </button>

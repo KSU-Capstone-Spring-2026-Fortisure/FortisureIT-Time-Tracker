@@ -4,6 +4,7 @@ import { initializeTeams } from "../teams";
 
 const RoleContext = createContext(null);
 const UNAUTHORIZED_VALUE = "unauthorized";
+const IMPERSONATION_STORAGE_KEY = "impersonatedUserId";
 
 function mapDbRoleToAppRole(roleName) {
   const normalized = String(roleName || "").toLowerCase();
@@ -74,9 +75,8 @@ function normalizeStoredUserId(storedUserId, users) {
 export function RoleProvider({ children }) {
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
-  const [selectedUserId, setSelectedUserIdState] = useState(() => {
-    return localStorage.getItem("devUserId") || UNAUTHORIZED_VALUE;
-  });
+  const [selectedUserId, setSelectedUserIdState] = useState(() => localStorage.getItem("devUserId") || UNAUTHORIZED_VALUE);
+  const [impersonatedUserId, setImpersonatedUserIdState] = useState(() => localStorage.getItem(IMPERSONATION_STORAGE_KEY) || "");
   const [teamsState, setTeamsState] = useState({
     inTeams: false,
     context: null,
@@ -106,9 +106,7 @@ export function RoleProvider({ children }) {
         if (!mounted) return;
         setUsers(Array.isArray(usersData) ? usersData : []);
 
-        const loginHint = String(
-          teamsResult?.user?.loginHint || teamsResult?.user?.userPrincipalName || ""
-        )
+        const loginHint = String(teamsResult?.user?.loginHint || teamsResult?.user?.userPrincipalName || teamsResult?.user?.email || "")
           .trim()
           .toLowerCase();
 
@@ -125,13 +123,7 @@ export function RoleProvider({ children }) {
             setIdentityEmail(String(authResult?.identity_email || loginHint || "").trim().toLowerCase());
             setIdentityMode(authResult?.auth_mode || null);
             setIdentityVerified(Boolean(authResult?.verified));
-            setAuthStatusMessage(
-              authResult?.verified
-                ? ""
-                : authResult?.user
-                  ? "Teams SDK email is being used as the temporary trusted sign-in source until verified Teams SSO is configured."
-                  : ""
-            );
+            setAuthStatusMessage("");
           } catch (error) {
             if (!mounted) return;
 
@@ -139,12 +131,8 @@ export function RoleProvider({ children }) {
             setIdentityEmail(loginHint);
             setIdentityMode(null);
             setIdentityVerified(false);
-            setAuthStatusMessage(
-              String(error?.message || "You do not have access to this app. Please contact your administrator.")
-            );
+            setAuthStatusMessage(String(error?.message || "You do not have access to this app. Please contact your administrator."));
           }
-        } else if (teamsResult.inTeams && teamsResult.authError) {
-          setAuthStatusMessage("Teams launched the app, but the SDK did not provide a usable email identity.");
         } else {
           setAuthStatusMessage("");
         }
@@ -185,7 +173,47 @@ export function RoleProvider({ children }) {
     return users.find((user) => String(user.id) === String(selectedUserId)) || null;
   }, [selectedUserId, users]);
 
-  const currentUser = authenticatedUser || devCurrentUser;
+  const baseUser = authenticatedUser || devCurrentUser;
+  const baseRole = useMemo(() => mapDbRoleToAppRole(baseUser?.role_name), [baseUser?.role_name]);
+  const canManageImpersonation = baseRole === "Admin";
+
+  const normalizedImpersonatedUserId = useMemo(() => {
+    if (!canManageImpersonation || !impersonatedUserId) {
+      return "";
+    }
+
+    return users.some((user) => String(user.id) === String(impersonatedUserId))
+      ? String(impersonatedUserId)
+      : "";
+  }, [canManageImpersonation, impersonatedUserId, users]);
+
+  useEffect(() => {
+    if (normalizedImpersonatedUserId === impersonatedUserId) {
+      return;
+    }
+
+    setImpersonatedUserIdState(normalizedImpersonatedUserId);
+    if (normalizedImpersonatedUserId) {
+      localStorage.setItem(IMPERSONATION_STORAGE_KEY, normalizedImpersonatedUserId);
+    } else {
+      localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+    }
+  }, [impersonatedUserId, normalizedImpersonatedUserId]);
+
+  const impersonatedUser = useMemo(() => {
+    if (!normalizedImpersonatedUserId || !canManageImpersonation) {
+      return null;
+    }
+
+    const match = users.find((user) => String(user.id) === String(normalizedImpersonatedUserId)) || null;
+    if (!match || String(match.id) === String(baseUser?.id)) {
+      return null;
+    }
+
+    return match;
+  }, [baseUser?.id, canManageImpersonation, normalizedImpersonatedUserId, users]);
+
+  const currentUser = impersonatedUser || baseUser;
   const role = useMemo(() => mapDbRoleToAppRole(currentUser?.role_name), [currentUser?.role_name]);
   const ROLE_OPTIONS = useMemo(() => buildRoleOptions(users), [users]);
   const managedUserIds = useMemo(() => {
@@ -202,7 +230,30 @@ export function RoleProvider({ children }) {
     localStorage.setItem("devUserId", normalized);
   };
 
+  const setImpersonation = (userId) => {
+    if (!canManageImpersonation) {
+      return;
+    }
+
+    const normalized = String(userId || "");
+    if (!normalized || String(baseUser?.id) === normalized) {
+      setImpersonatedUserIdState("");
+      localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+      return;
+    }
+
+    setImpersonatedUserIdState(normalized);
+    localStorage.setItem(IMPERSONATION_STORAGE_KEY, normalized);
+  };
+
+  const clearImpersonation = () => {
+    setImpersonatedUserIdState("");
+    localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+  };
+
   const canUseDevUserSwitching = !authenticatedUser;
+  const isImpersonating = Boolean(impersonatedUser);
+  const impersonatorEmail = isImpersonating ? baseUser?.email || identityEmail || "" : "";
 
   return (
     <RoleContext.Provider
@@ -210,11 +261,19 @@ export function RoleProvider({ children }) {
         role,
         users,
         currentUser,
+        baseUser,
         currentUserId: currentUser?.id ?? null,
         managedUserIds,
         loadingUsers,
         selectedUserId,
         setCurrentUserId,
+        impersonatedUser,
+        impersonatedUserId: normalizedImpersonatedUserId,
+        setImpersonation,
+        clearImpersonation,
+        isImpersonating,
+        impersonatorEmail,
+        canManageImpersonation,
         ROLE_OPTIONS,
         canUseDevUserSwitching,
         canAccessFeature,
@@ -241,4 +300,3 @@ export function useRole() {
 
   return context;
 }
-
