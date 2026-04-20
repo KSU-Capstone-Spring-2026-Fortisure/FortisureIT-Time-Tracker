@@ -10,11 +10,16 @@ import BugFeatureRequest from "./pages/BugFeatureRequest";
 import Documentation from "./pages/Documentation";
 
 import { initializeTeams } from "./teams";
+import { getUiConfig } from "./services/api";
 import { RoleProvider, useRole } from "./context/RoleContext";
 import RoleSelector from "./components/RoleSelector";
 
 function ProtectedRoute({ feature, children }) {
-  const { role, canAccessFeature } = useRole();
+  const { role, canAccessFeature, loadingUsers } = useRole();
+
+  if (loadingUsers) {
+    return <p>Loading user access...</p>;
+  }
 
   if (!canAccessFeature(role, feature)) {
     return <Navigate to="/" replace />;
@@ -29,18 +34,31 @@ function AppContent() {
     context: null,
     user: null,
   });
+  const [uiConfig, setUiConfig] = useState({
+    showDevUserSwitcher: false,
+  });
 
   useEffect(() => {
     let mounted = true;
 
-    async function setupTeams() {
-      const result = await initializeTeams();
+    async function setupApp() {
+      try {
+        const [teamsResult, uiConfigResult] = await Promise.all([initializeTeams(), getUiConfig()]);
 
-      if (!mounted) return;
-      setTeamsState(result);
+        if (!mounted) return;
+        setTeamsState(teamsResult);
+        setUiConfig((current) => ({ ...current, ...(uiConfigResult || {}) }));
+      } catch (error) {
+        console.error("Failed to load app config:", error);
+
+        if (!mounted) return;
+        const teamsResult = await initializeTeams();
+        if (!mounted) return;
+        setTeamsState(teamsResult);
+      }
     }
 
-    setupTeams();
+    setupApp();
 
     return () => {
       mounted = false;
@@ -49,7 +67,7 @@ function AppContent() {
 
   return (
     <BrowserRouter>
-      <RoleSelector />
+      {uiConfig.showDevUserSwitcher ? <RoleSelector /> : null}
 
       <Routes>
         <Route index element={<ProjectTracker />} />
@@ -108,3 +126,6 @@ function App() {
 }
 
 export default App;
+
+
+

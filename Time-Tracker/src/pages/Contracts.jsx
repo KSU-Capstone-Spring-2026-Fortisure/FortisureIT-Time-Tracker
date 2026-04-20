@@ -64,15 +64,19 @@ const getSortTime = (record) => {
   return Number.isNaN(time) ? 0 : time;
 };
 
+const getOwnerLabel = (contract) => contract.created_by_name || `User ${contract.created_by}`;
+
 function Contracts() {
   const { clientId } = useParams();
   const navigate = useNavigate();
-  const { role, canAccessFeature, isManagerLike, getTemporaryUserId } = useRole();
+  const { role, currentUserId, managedUserIds, canAccessFeature, isManagerLike, loadingUsers } = useRole();
 
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [debugError, setDebugError] = useState("");
+  const [reviewSort, setReviewSort] = useState("recent");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("all");
 
   const [showAddEdit, setShowAddEdit] = useState(false);
   const [editingContract, setEditingContract] = useState(null);
@@ -99,20 +103,23 @@ function Contracts() {
   const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate]);
   const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
   const weekLabel = useMemo(() => formatWeekLabel(weekStart, weekEnd), [weekEnd, weekStart]);
-  const currentUserId = getTemporaryUserId(role);
   const selectedDay = useMemo(() => parseDateOnly(selectedDate), [selectedDate]);
 
   const canContribute = CONTRIBUTOR_ROLES.includes(role);
   const canReview = isManagerLike(role);
 
   useEffect(() => {
-    if (!canAccessFeature(role, "contracts")) {
+    if (loadingUsers) {
+      return;
+    }
+
+    if (!canAccessFeature(role, "contracts") || !currentUserId) {
       setLoading(false);
       return;
     }
 
     loadData();
-  }, [clientId, role, selectedDate]);
+  }, [clientId, currentUserId, loadingUsers, role, selectedDate]);
 
   const loadData = async () => {
     setLoading(true);
@@ -126,6 +133,12 @@ function Contracts() {
       });
 
       const safeContracts = Array.isArray(contractsData) ? contractsData : [];
+      const visibleUserIds = role === "Admin"
+        ? null
+        : role === "Manager"
+          ? [currentUserId, ...managedUserIds]
+          : [currentUserId];
+
       const filteredContracts = safeContracts
         .filter((contract) => String(contract.client_id) === String(clientId))
         .filter((contract) => {
@@ -134,11 +147,9 @@ function Contracts() {
           return selectedDay >= startDate && selectedDay <= endDate;
         })
         .filter((contract) => {
-          if (role === "Admin") return true;
-          if (role === "Manager") return contract.created_by != null;
-          return String(contract.created_by) === String(currentUserId);
-        })
-        .sort((left, right) => getSortTime(right) - getSortTime(left) || Number(right.id || 0) - Number(left.id || 0));
+          if (!visibleUserIds) return true;
+          return visibleUserIds.some((userId) => String(userId) === String(contract.created_by));
+        });
 
       setContracts(filteredContracts);
       setCurrentPage(1);
@@ -151,6 +162,59 @@ function Contracts() {
       setLoading(false);
     }
   };
+
+  const sortedContracts = useMemo(() => {
+    const sorted = [...contracts];
+
+    sorted.sort((left, right) => {
+      if (reviewSort === "employee-asc") {
+        return getOwnerLabel(left).localeCompare(getOwnerLabel(right)) || getSortTime(right) - getSortTime(left);
+      }
+
+      if (reviewSort === "employee-desc") {
+        return getOwnerLabel(right).localeCompare(getOwnerLabel(left)) || getSortTime(right) - getSortTime(left);
+      }
+
+      if (reviewSort === "date-desc") {
+        return parseDateOnly(right.start_date) - parseDateOnly(left.start_date) || getSortTime(right) - getSortTime(left);
+      }
+
+      return getSortTime(right) - getSortTime(left) || Number(right.id || 0) - Number(left.id || 0);
+    });
+
+    return sorted;
+  }, [contracts, reviewSort]);
+
+  const visibleEmployeeOptions = useMemo(() => {
+    const options = new Map();
+
+    sortedContracts.forEach((contract) => {
+      if (!contract?.created_by) return;
+      options.set(String(contract.created_by), getOwnerLabel(contract));
+    });
+
+    return Array.from(options.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+  }, [sortedContracts]);
+
+  useEffect(() => {
+    if (selectedEmployeeId === "all") {
+      return;
+    }
+
+    if (!visibleEmployeeOptions.some((option) => option.value === String(selectedEmployeeId))) {
+      setSelectedEmployeeId("all");
+    }
+  }, [selectedEmployeeId, visibleEmployeeOptions]);
+
+  const displayedContracts = useMemo(() => {
+    if (selectedEmployeeId === "all") {
+      return sortedContracts;
+    }
+
+    return sortedContracts.filter((contract) => String(contract.created_by) === String(selectedEmployeeId));
+  }, [selectedEmployeeId, sortedContracts]);
 
   const handleAdd = () => {
     setEditingContract(null);
@@ -175,11 +239,11 @@ function Contracts() {
     return canContribute && String(contract.created_by) === String(currentUserId) && ["draft", "rejected"].includes(status);
   };
 
-  const submittableContracts = contracts.filter(isEditableContract);
-  const pendingReviewContracts = contracts.filter((contract) => getContractStatus(contract) === "submitted");
+  const submittableContracts = displayedContracts.filter(isEditableContract);
+  const pendingReviewContracts = displayedContracts.filter((contract) => getContractStatus(contract) === "submitted");
 
-  const totalPages = Math.max(1, Math.ceil(contracts.length / PAGE_SIZE));
-  const paginatedContracts = contracts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(displayedContracts.length / PAGE_SIZE));
+  const paginatedContracts = displayedContracts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const pageWindow = Array.from({ length: totalPages }, (_, index) => index + 1).filter(
     (page) => page >= currentPage - 2 && page <= currentPage + 2
   );
@@ -259,7 +323,6 @@ function Contracts() {
     setContractToReview(contract);
     setReviewAction(action);
     setReviewNote(contract.rejection_note || "");
-    setConfirmProgressMessage("");
     setShowReviewModal(true);
   };
 
@@ -327,14 +390,47 @@ function Contracts() {
           </Button>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-          <label htmlFor="contracts-week-picker">Jump to week</label>
-          <input
-            id="contracts-week-picker"
-            type="date"
-            value={selectedDate}
-            onChange={(event) => setSelectedDate(event.target.value)}
-          />
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          {canReview ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <label htmlFor="contracts-sort">Sort by</label>
+                <select id="contracts-sort" value={reviewSort} onChange={(event) => setReviewSort(event.target.value)}>
+                  <option value="recent">Most Recent</option>
+                  <option value="employee-asc">Employee A-Z</option>
+                  <option value="employee-desc">Employee Z-A</option>
+                  <option value="date-desc">Start Date</option>
+                </select>
+              </div>
+
+              {visibleEmployeeOptions.length > 1 ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <label htmlFor="contracts-employee-filter">Employee</label>
+                  <select
+                    id="contracts-employee-filter"
+                    value={selectedEmployeeId}
+                    onChange={(event) => setSelectedEmployeeId(event.target.value)}
+                  >
+                    <option value="all">All Employees</option>
+                    {visibleEmployeeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            <label htmlFor="contracts-week-picker">Jump to week</label>
+            <input
+              id="contracts-week-picker"
+              type="date"
+              value={selectedDate}
+              onChange={(event) => setSelectedDate(event.target.value)}
+            />
+          </div>
         </div>
       </div>
 
@@ -346,9 +442,9 @@ function Contracts() {
         </div>
       ) : null}
 
-      {loading ? <p>Loading contracts...</p> : null}
+      {(loading || loadingUsers) ? <p>Loading contracts...</p> : null}
 
-      {!loading && !error ? (
+      {!loading && !loadingUsers && !error ? (
         <>
           <div className="table-container">
             <table>
@@ -376,7 +472,7 @@ function Contracts() {
 
                     return (
                       <tr key={contract.id}>
-                        {canReview ? <td>{contract.created_by_name || `User ${contract.created_by}`}</td> : null}
+                        {canReview ? <td>{getOwnerLabel(contract)}</td> : null}
                         <td>{contract.contract_name}</td>
                         <td>{contract.total_value}</td>
                         <td>{formatDate(contract.start_date)}</td>
@@ -557,3 +653,7 @@ function Contracts() {
 }
 
 export default Contracts;
+
+
+
+

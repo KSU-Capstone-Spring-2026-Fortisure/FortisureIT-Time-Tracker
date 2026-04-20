@@ -78,12 +78,14 @@ const getSubmitterLabel = (entry) => entry.user_name || entry.submitted_by_name 
 
 function HourlyTracking() {
   const { clientId } = useParams();
-  const { role, canAccessFeature, isManagerLike, getTemporaryUserId } = useRole();
+  const { role, users, currentUserId, managedUserIds, canAccessFeature, isManagerLike, loadingUsers } = useRole();
 
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [debugError, setDebugError] = useState("");
+  const [reviewSort, setReviewSort] = useState("recent");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("all");
 
   const [showAddEdit, setShowAddEdit] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
@@ -111,19 +113,22 @@ function HourlyTracking() {
   const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate]);
   const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
   const weekLabel = useMemo(() => formatWeekLabel(weekStart, weekEnd), [weekEnd, weekStart]);
-  const currentUserId = getTemporaryUserId(role);
 
   const canContribute = CONTRIBUTOR_ROLES.includes(role);
   const canReview = isManagerLike(role);
 
   useEffect(() => {
-    if (!canAccessFeature(role, "hourly")) {
+    if (loadingUsers) {
+      return;
+    }
+
+    if (!canAccessFeature(role, "hourly") || !currentUserId) {
       setLoading(false);
       return;
     }
 
     loadEntries();
-  }, [clientId, role, selectedDate]);
+  }, [clientId, currentUserId, loadingUsers, role, selectedDate]);
 
   const loadEntries = async () => {
     setLoading(true);
@@ -137,6 +142,12 @@ function HourlyTracking() {
       });
 
       const safeEntries = Array.isArray(data) ? data : [];
+      const visibleUserIds = role === "Admin"
+        ? null
+        : role === "Manager"
+          ? [currentUserId, ...managedUserIds]
+          : [currentUserId];
+
       const filteredEntries = safeEntries
         .filter((entry) => String(entry.client_id) === String(clientId))
         .filter((entry) => {
@@ -144,11 +155,9 @@ function HourlyTracking() {
           return workDate >= weekStart && workDate <= weekEnd;
         })
         .filter((entry) => {
-          if (role === "Admin") return true;
-          if (role === "Manager") return entry.user_id != null;
-          return String(entry.user_id) === String(currentUserId);
-        })
-        .sort((left, right) => getSortTime(right) - getSortTime(left) || Number(right.id || 0) - Number(left.id || 0));
+          if (!visibleUserIds) return true;
+          return visibleUserIds.some((userId) => String(userId) === String(entry.user_id));
+        });
 
       setEntries(filteredEntries);
       setCurrentPage(1);
@@ -161,6 +170,59 @@ function HourlyTracking() {
       setLoading(false);
     }
   };
+
+  const sortedEntries = useMemo(() => {
+    const sorted = [...entries];
+
+    sorted.sort((left, right) => {
+      if (reviewSort === "employee-asc") {
+        return getSubmitterLabel(left).localeCompare(getSubmitterLabel(right)) || getSortTime(right) - getSortTime(left);
+      }
+
+      if (reviewSort === "employee-desc") {
+        return getSubmitterLabel(right).localeCompare(getSubmitterLabel(left)) || getSortTime(right) - getSortTime(left);
+      }
+
+      if (reviewSort === "date-desc") {
+        return parseDateOnly(right.work_date) - parseDateOnly(left.work_date) || getSortTime(right) - getSortTime(left);
+      }
+
+      return getSortTime(right) - getSortTime(left) || Number(right.id || 0) - Number(left.id || 0);
+    });
+
+    return sorted;
+  }, [entries, reviewSort]);
+
+  const visibleEmployeeOptions = useMemo(() => {
+    const options = new Map();
+
+    sortedEntries.forEach((entry) => {
+      if (!entry?.user_id) return;
+      options.set(String(entry.user_id), getSubmitterLabel(entry));
+    });
+
+    return Array.from(options.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+  }, [sortedEntries]);
+
+  useEffect(() => {
+    if (selectedEmployeeId === "all") {
+      return;
+    }
+
+    if (!visibleEmployeeOptions.some((option) => option.value === String(selectedEmployeeId))) {
+      setSelectedEmployeeId("all");
+    }
+  }, [selectedEmployeeId, visibleEmployeeOptions]);
+
+  const displayedEntries = useMemo(() => {
+    if (selectedEmployeeId === "all") {
+      return sortedEntries;
+    }
+
+    return sortedEntries.filter((entry) => String(entry.user_id) === String(selectedEmployeeId));
+  }, [selectedEmployeeId, sortedEntries]);
 
   const handleAdd = () => {
     setEditingEntry(null);
@@ -185,15 +247,15 @@ function HourlyTracking() {
     return canContribute && String(entry.user_id) === String(currentUserId) && ["draft", "rejected"].includes(status);
   };
 
-  const pendingReviewEntries = entries.filter((entry) => getEntryStatus(entry) === "submitted");
-  const submittableEntries = entries.filter(isEditableEntry);
+  const pendingReviewEntries = displayedEntries.filter((entry) => getEntryStatus(entry) === "submitted");
+  const submittableEntries = displayedEntries.filter(isEditableEntry);
 
-  const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
-  const paginatedEntries = entries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(displayedEntries.length / PAGE_SIZE));
+  const paginatedEntries = displayedEntries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const pageWindow = Array.from({ length: totalPages }, (_, index) => index + 1).filter(
     (page) => page >= currentPage - 2 && page <= currentPage + 2
   );
-  const weeklyTotal = entries.reduce((sum, entry) => sum + Number(entry.hours_worked || 0), 0);
+  const weeklyTotal = displayedEntries.reduce((sum, entry) => sum + Number(entry.hours_worked || 0), 0);
 
   const resetReviewModal = () => {
     setShowReviewModal(false);
@@ -361,14 +423,47 @@ function HourlyTracking() {
           </Button>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-          <label htmlFor="hourly-week-picker">Jump to week</label>
-          <input
-            id="hourly-week-picker"
-            type="date"
-            value={selectedDate}
-            onChange={(event) => setSelectedDate(event.target.value)}
-          />
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          {canReview ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <label htmlFor="hourly-sort">Sort by</label>
+                <select id="hourly-sort" value={reviewSort} onChange={(event) => setReviewSort(event.target.value)}>
+                  <option value="recent">Most Recent</option>
+                  <option value="employee-asc">Employee A-Z</option>
+                  <option value="employee-desc">Employee Z-A</option>
+                  <option value="date-desc">Date Worked</option>
+                </select>
+              </div>
+
+              {visibleEmployeeOptions.length > 1 ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <label htmlFor="hourly-employee-filter">Employee</label>
+                  <select
+                    id="hourly-employee-filter"
+                    value={selectedEmployeeId}
+                    onChange={(event) => setSelectedEmployeeId(event.target.value)}
+                  >
+                    <option value="all">All Employees</option>
+                    {visibleEmployeeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            <label htmlFor="hourly-week-picker">Jump to week</label>
+            <input
+              id="hourly-week-picker"
+              type="date"
+              value={selectedDate}
+              onChange={(event) => setSelectedDate(event.target.value)}
+            />
+          </div>
         </div>
       </div>
 
@@ -382,9 +477,9 @@ function HourlyTracking() {
         </div>
       )}
 
-      {loading && <p>Loading hourly entries...</p>}
+      {(loading || loadingUsers) && <p>Loading hourly entries...</p>}
 
-      {!loading && !error && (
+      {!loading && !loadingUsers && !error && (
         <>
           {canReview && pendingReviewEntries.length > 0 ? (
             <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
@@ -606,3 +701,7 @@ function HourlyTracking() {
 }
 
 export default HourlyTracking;
+
+
+
+

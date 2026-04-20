@@ -4,7 +4,7 @@ import "../css/projectTracker.css";
 import { useRole } from "../context/RoleContext";
 
 function ProjectTracker() {
-  const { role, canAccessFeature } = useRole();
+  const { role, canAccessFeature, loadingUsers, authStatusMessage, identityEmail, identityVerified } = useRole();
 
   const cards = [
     canAccessFeature(role, "hourly")
@@ -52,7 +52,21 @@ function ProjectTracker() {
 
       <div className="divider" />
       <div className="projectTracker-page">
-        <div className="projectTracker-content"></div>
+        <div className="projectTracker-content">
+          {loadingUsers ? <p>Loading user access...</p> : null}
+
+          {!loadingUsers && authStatusMessage ? (
+            <div className="error-box" style={{ marginBottom: "16px" }}>
+              <p>{authStatusMessage}</p>
+              {identityEmail ? <p style={{ marginTop: "8px" }}>Teams identity: {identityEmail}</p> : null}
+              {!identityVerified && identityEmail ? (
+                <p style={{ marginTop: "8px" }}>
+                  Access remains blocked until this email exists in the users table.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
 
         <div className="cards">
           {cards.map((card) => (
@@ -65,9 +79,14 @@ function ProjectTracker() {
             />
           ))}
         </div>
+
+        {!loadingUsers && !authStatusMessage && cards.length === 0 ? (
+          <p style={{ marginTop: "16px" }}>No features are available for your account.</p>
+        ) : null}
       </div>
     </div>
   );
 }
 
 export default ProjectTracker;
+

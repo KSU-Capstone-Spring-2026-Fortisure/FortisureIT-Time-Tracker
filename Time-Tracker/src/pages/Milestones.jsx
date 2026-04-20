@@ -43,7 +43,7 @@ const getMilestoneStatus = (milestone) => {
 
 function Milestones() {
   const { contractId } = useParams();
-  const { role, canAccessFeature } = useRole();
+  const { role, canAccessFeature, currentUserId, loadingUsers } = useRole();
 
   const [milestones, setMilestones] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,26 +70,30 @@ function Milestones() {
   const canEditMilestones = role === "Employee" || role === "Contractor";
 
   useEffect(() => {
-    if (!canAccessFeature(role, "contracts")) {
+    if (loadingUsers) {
+      return;
+    }
+
+    if (!canAccessFeature(role, "contracts") || !currentUserId) {
       setLoading(false);
       return;
     }
 
     loadMilestones();
-  }, [contractId, role]);
+  }, [contractId, currentUserId, loadingUsers, role]);
 
   const loadMilestones = async () => {
     setLoading(true);
     setError("");
 
     try {
-      const data = await getMilestones();
+      const data = await getMilestones({
+        contract_id: contractId,
+        viewer_role: role,
+        viewer_user_id: currentUserId,
+      });
       const filtered = Array.isArray(data)
-        ? data.filter(
-            (milestone) =>
-              String(milestone.contract_id) === String(contractId) &&
-              milestone.is_deleted !== true
-          )
+        ? data.filter((milestone) => milestone.is_deleted !== true)
         : [];
 
       setMilestones(filtered);
@@ -201,7 +205,7 @@ function Milestones() {
       <Header title="Milestones" showBack />
       <div className="divider" />
 
-      {loading && <p>Loading milestones...</p>}
+      {(loading || loadingUsers) && <p>Loading milestones...</p>}
 
       {!loading && (
         <>
@@ -299,3 +303,5 @@ function Milestones() {
 }
 
 export default Milestones;
+
+

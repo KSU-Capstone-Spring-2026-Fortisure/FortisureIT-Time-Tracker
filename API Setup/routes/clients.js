@@ -6,25 +6,23 @@ const router = express.Router();
 
 router.get("/clients", async (req, res) => {
   const viewerRole = String(req.query.viewer_role || "").toLowerCase();
-  const params = [];
-  const where = ["c.is_deleted IS NOT TRUE", "c.is_active IS TRUE"];
-  let limitClause = "";
-
-  // Temporary client visibility rule until Microsoft auth and full access mapping are wired up.
-  if (["hourly", "employee", "contractor"].includes(viewerRole)) {
-    limitClause = "LIMIT 3";
-  } else if (viewerRole === "manager") {
-    limitClause = "LIMIT 5";
-  }
+  const viewerUserId = Number(req.query.viewer_user_id) || null;
 
   try {
     const result = await pool.query(
-      `SELECT c.*
+      `SELECT DISTINCT c.*
        FROM clients c
-       WHERE ${where.join(" AND ")}
-       ORDER BY c.id ASC
-       ${limitClause}`,
-      params
+       LEFT JOIN user_client_access uca
+         ON uca.client_id = c.id
+        AND uca.is_deleted IS NOT TRUE
+       WHERE c.is_deleted IS NOT TRUE
+         AND c.is_active IS TRUE
+         AND (
+           $1 = 'admin'
+           OR uca.user_id = $2
+         )
+       ORDER BY c.client_name ASC`,
+      [viewerRole, viewerUserId]
     );
 
     res.json(result.rows);

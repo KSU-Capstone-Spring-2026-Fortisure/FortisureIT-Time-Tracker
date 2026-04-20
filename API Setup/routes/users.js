@@ -25,17 +25,8 @@ router.get("/users", async (req, res) => {
 
     res.json(result.rows);
   } catch (err) {
-    logError({
-      message: err.message,
-      stack: err.stack,
-      route: "/users",
-    });
-
-    res.status(500).json({
-      error: err.message,
-      detail: err.detail || null,
-      hint: err.hint || null,
-    });
+    logError({ message: err.message, stack: err.stack, route: "/users" });
+    res.status(500).json({ error: err.message, detail: err.detail || null, hint: err.hint || null });
   }
 });
 
