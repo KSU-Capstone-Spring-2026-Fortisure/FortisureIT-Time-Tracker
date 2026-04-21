@@ -54,6 +54,11 @@ function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
       return;
     }
 
+    if (new Date(form.end_date).getTime() < new Date(form.start_date).getTime()) {
+      setValidationError("The contract end date cannot be before the start date.");
+      return;
+    }
+
     setValidationError("");
     await onSave(form);
   };

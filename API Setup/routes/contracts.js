@@ -37,6 +37,12 @@ function validateContractPayload({ contract_name, start_date, end_date }) {
     error.status = 400;
     throw error;
   }
+
+  if (new Date(end_date).getTime() < new Date(start_date).getTime()) {
+    const error = new Error("The contract end date cannot be before the start date.");
+    error.status = 400;
+    throw error;
+  }
 }
 
 router.get("/contracts", async (req, res) => {
@@ -123,6 +129,8 @@ router.post("/contracts", async (req, res) => {
   } = req.body;
 
   try {
+    validateContractPayload({ contract_name, start_date, end_date });
+
     const result = await pool.query(
       `INSERT INTO contracts (
          client_id,
@@ -189,8 +197,6 @@ router.put("/contracts/:id", async (req, res) => {
 
 router.put("/contracts/:id/submit", async (req, res) => {
   try {
-    validateContractPayload({ contract_name, start_date, end_date });
-
     const result = await pool.query(
       `UPDATE contracts
        SET status = 'submitted',
