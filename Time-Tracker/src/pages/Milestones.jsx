@@ -21,6 +21,12 @@ import "../css/milestones.css";
 import { sanitizeNumber } from "./shared/helpers";
 import { useRole } from "../context/RoleContext";
 
+const SORT_ICONS = {
+  asc: "\u2191",
+  desc: "\u2193",
+  idle: "\u2195",
+};
+
 const formatDate = (value) => {
   if (!value) return "";
   return value.split("T")[0];
@@ -56,6 +62,7 @@ function Milestones() {
   const [error, setError] = useState("");
   const [debugError, setDebugError] = useState("");
   const [formError, setFormError] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: "due_date", direction: "asc" });
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [milestoneToDelete, setMilestoneToDelete] = useState(null);
@@ -88,6 +95,54 @@ function Milestones() {
   const totalMilestoneValue = useMemo(
     () => milestones.reduce((sum, milestone) => sum + Number(milestone.amount || 0), 0),
     [milestones]
+  );
+
+  const sortedMilestones = useMemo(() => {
+    const getSortValue = (milestone) => {
+      switch (sortConfig.key) {
+        case "milestone_name":
+          return String(milestone.milestone_name || "").toLowerCase();
+        case "amount":
+          return Number(milestone.amount || 0);
+        case "due_date":
+          return new Date(milestone.due_date || 0).getTime();
+        case "status":
+          return getMilestoneStatus(milestone);
+        case "description":
+        default:
+          return String(milestone[sortConfig.key] || "").toLowerCase();
+      }
+    };
+
+    const sorted = [...milestones];
+    sorted.sort((left, right) => {
+      const leftValue = getSortValue(left);
+      const rightValue = getSortValue(right);
+      const comparison = typeof leftValue === "number" && typeof rightValue === "number"
+        ? leftValue - rightValue
+        : String(leftValue).localeCompare(String(rightValue));
+
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [milestones, sortConfig]);
+
+  const toggleSort = (key) => {
+    setSortConfig((current) => (
+      current.key === key
+        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: "asc" }
+    ));
+  };
+
+  const renderSortableHeader = (label, key) => (
+    <button type="button" className="sort-header-button" onClick={() => toggleSort(key)}>
+      <span>{label}</span>
+      <span className="sort-header-icon">
+        {sortConfig.key === key ? (sortConfig.direction === "asc" ? SORT_ICONS.asc : SORT_ICONS.desc) : SORT_ICONS.idle}
+      </span>
+    </button>
   );
 
   useEffect(() => {
@@ -303,35 +358,35 @@ function Milestones() {
               <strong>Contract Status: </strong>
               <span style={{ textTransform: "capitalize" }}>{contractStatus || "draft"}</span>
             </div>
-            <div style={{ fontWeight: 600 }}>Total milestone value: {totalMilestoneValue.toFixed(2)}</div>
+            <div style={{ fontWeight: 600 }}>Total milestone value: ${totalMilestoneValue.toFixed(2)}</div>
           </div>
 
           <div className="table-container">
             <table>
               <thead>
                 <tr>
-                  <th>Milestone</th>
-                  <th>Amount</th>
-                  <th>Due Date</th>
-                  <th>Status</th>
-                  <th>Description</th>
-                  <th></th>
+                  <th>{renderSortableHeader("Milestone", "milestone_name")}</th>
+                  <th>{renderSortableHeader("Amount", "amount")}</th>
+                  <th>{renderSortableHeader("Due Date", "due_date")}</th>
+                  <th>{renderSortableHeader("Status", "status")}</th>
+                  <th>{renderSortableHeader("Description", "description")}</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {milestones.length === 0 ? (
+                {sortedMilestones.length === 0 ? (
                   <tr>
                     <td colSpan="6">No milestones found.</td>
                   </tr>
                 ) : (
-                  milestones.map((milestone) => {
+                  sortedMilestones.map((milestone) => {
                     const status = getMilestoneStatus(milestone);
                     const canEdit = canEditOwnMilestones && !isContractLocked && ["open", "draft", "rejected"].includes(status);
 
                     return (
                       <tr key={milestone.id}>
                         <td>{milestone.milestone_name}</td>
-                        <td>{Number(milestone.amount || 0).toFixed(2)}</td>
+                        <td>${Number(milestone.amount || 0).toFixed(2)}</td>
                         <td>{formatDate(milestone.due_date)}</td>
                         <td style={{ textTransform: "capitalize" }}>{status}</td>
                         <td>{milestone.description}</td>

@@ -170,6 +170,8 @@ router.put("/contracts/:id/submit", async (req, res) => {
     const result = await pool.query(
       `UPDATE contracts
        SET status = 'submitted',
+           is_approved = false,
+           is_rejected = false,
            submitted_at = NOW(),
            reviewed_at = NULL,
            reviewed_by = NULL,
@@ -192,10 +194,12 @@ router.put("/contracts/:id/review", async (req, res) => {
   try {
     const result = await pool.query(
       `UPDATE contracts
-       SET status = $1,
+       SET status = $1::varchar,
            reviewed_by = $2,
            reviewed_at = NOW(),
            rejection_note = $3,
+           is_approved = CASE WHEN $1::varchar = 'approved' THEN true ELSE false END,
+           is_rejected = CASE WHEN $1::varchar = 'rejected' THEN true ELSE false END,
            updated_at = NOW()
        WHERE id = $4
        RETURNING *`,

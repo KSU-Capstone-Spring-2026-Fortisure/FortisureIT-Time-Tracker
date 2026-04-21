@@ -9,6 +9,7 @@ import Button from "../components/Button";
 
 import {
   getContracts,
+  getClients,
   createContract,
   updateContract,
   softDeleteContract,
@@ -22,6 +23,11 @@ import "../css/contracts.css";
 const CONTRIBUTOR_ROLES = ["Employee", "Contractor"];
 const PAGE_SIZE = 15;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
+const SORT_ICONS = {
+  asc: "\u2191",
+  desc: "\u2193",
+  idle: "\u2195",
+};
 
 const toDateInputValue = (value) => {
   const date = new Date(value);
@@ -56,14 +62,9 @@ const formatDate = (value) => {
   return value.split("T")[0];
 };
 
+const formatCurrency = (value) => `$${Number(value || 0).toFixed(2)}`;
+
 const getContractStatus = (contract) => (contract.status || "draft").toLowerCase();
-
-const getSortTime = (record) => {
-  const value = record.updated_at || record.created_at || record.start_date;
-  const time = new Date(value).getTime();
-  return Number.isNaN(time) ? 0 : time;
-};
-
 const getOwnerLabel = (contract) => contract.created_by_name || `User ${contract.created_by}`;
 
 function Contracts() {
@@ -72,10 +73,11 @@ function Contracts() {
   const { role, currentUserId, managedUserIds, canAccessFeature, isManagerLike, loadingUsers } = useRole();
 
   const [contracts, setContracts] = useState([]);
+  const [clientName, setClientName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [debugError, setDebugError] = useState("");
-  const [reviewSort, setReviewSort] = useState("recent");
+  const [sortConfig, setSortConfig] = useState({ key: "start_date", direction: "desc" });
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("all");
 
   const [showAddEdit, setShowAddEdit] = useState(false);
@@ -85,6 +87,8 @@ function Contracts() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [contractToDelete, setContractToDelete] = useState(null);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [submitTargets, setSubmitTargets] = useState([]);
+  const [submitPrompt, setSubmitPrompt] = useState("");
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [contractToReview, setContractToReview] = useState(null);
   const [reviewAction, setReviewAction] = useState("approved");
@@ -126,13 +130,21 @@ function Contracts() {
     setError("");
 
     try {
-      const contractsData = await getContracts({
-        client_id: clientId,
-        viewer_role: role,
-        viewer_user_id: currentUserId,
-      });
+      const [contractsData, clientsData] = await Promise.all([
+        getContracts({
+          client_id: clientId,
+          viewer_role: role,
+          viewer_user_id: currentUserId,
+        }),
+        getClients({
+          mode: "contracts",
+          viewer_role: role,
+          viewer_user_id: currentUserId,
+        }),
+      ]);
 
       const safeContracts = Array.isArray(contractsData) ? contractsData : [];
+      const safeClients = Array.isArray(clientsData) ? clientsData : [];
       const visibleUserIds = role === "Admin"
         ? null
         : role === "Manager"
@@ -151,7 +163,10 @@ function Contracts() {
           return visibleUserIds.some((userId) => String(userId) === String(contract.created_by));
         });
 
+      const matchingClient = safeClients.find((client) => String(client.id) === String(clientId));
+
       setContracts(filteredContracts);
+      setClientName(matchingClient?.client_name || filteredContracts[0]?.client_name || "");
       setCurrentPage(1);
     } catch (err) {
       console.error("Failed to load contracts:", err);
@@ -163,27 +178,51 @@ function Contracts() {
     }
   };
 
+  const getSortValue = (contract, key) => {
+    switch (key) {
+      case "employee":
+        return getOwnerLabel(contract).toLowerCase();
+      case "contract_name":
+        return String(contract.contract_name || "").toLowerCase();
+      case "total_value":
+        return Number(contract.total_value || 0);
+      case "start_date":
+        return parseDateOnly(contract.start_date).getTime();
+      case "end_date":
+        return parseDateOnly(contract.end_date || contract.start_date).getTime();
+      case "status":
+        return getContractStatus(contract);
+      case "rejection_note":
+        return String(contract.rejection_note || "").toLowerCase();
+      default:
+        return String(contract[key] || "").toLowerCase();
+    }
+  };
+
   const sortedContracts = useMemo(() => {
     const sorted = [...contracts];
 
     sorted.sort((left, right) => {
-      if (reviewSort === "employee-asc") {
-        return getOwnerLabel(left).localeCompare(getOwnerLabel(right)) || getSortTime(right) - getSortTime(left);
+      const leftValue = getSortValue(left, sortConfig.key);
+      const rightValue = getSortValue(right, sortConfig.key);
+
+      let comparison = 0;
+
+      if (typeof leftValue === "number" && typeof rightValue === "number") {
+        comparison = leftValue - rightValue;
+      } else {
+        comparison = String(leftValue).localeCompare(String(rightValue));
       }
 
-      if (reviewSort === "employee-desc") {
-        return getOwnerLabel(right).localeCompare(getOwnerLabel(left)) || getSortTime(right) - getSortTime(left);
+      if (comparison === 0) {
+        comparison = Number(right.id || 0) - Number(left.id || 0);
       }
 
-      if (reviewSort === "date-desc") {
-        return parseDateOnly(right.start_date) - parseDateOnly(left.start_date) || getSortTime(right) - getSortTime(left);
-      }
-
-      return getSortTime(right) - getSortTime(left) || Number(right.id || 0) - Number(left.id || 0);
+      return sortConfig.direction === "asc" ? comparison : -comparison;
     });
 
     return sorted;
-  }, [contracts, reviewSort]);
+  }, [contracts, sortConfig]);
 
   const visibleEmployeeOptions = useMemo(() => {
     const options = new Map();
@@ -216,6 +255,41 @@ function Contracts() {
     return sortedContracts.filter((contract) => String(contract.created_by) === String(selectedEmployeeId));
   }, [selectedEmployeeId, sortedContracts]);
 
+  const isEditableContract = (contract) => {
+    const status = getContractStatus(contract);
+    return canContribute && String(contract.created_by) === String(currentUserId) && ["draft", "rejected"].includes(status);
+  };
+
+  const submittableContracts = displayedContracts.filter(isEditableContract);
+  const pendingReviewContracts = displayedContracts.filter((contract) => getContractStatus(contract) === "submitted");
+
+  const totalPages = Math.max(1, Math.ceil(displayedContracts.length / PAGE_SIZE));
+  const paginatedContracts = displayedContracts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageWindow = Array.from({ length: totalPages }, (_, index) => index + 1).filter(
+    (page) => page >= currentPage - 2 && page <= currentPage + 2
+  );
+  const contractTotal = displayedContracts.reduce((sum, contract) => sum + Number(contract.total_value || 0), 0);
+
+  const toggleSort = (key) => {
+    setSortConfig((current) => (
+      current.key === key
+        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: "asc" }
+    ));
+  };
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return SORT_ICONS.idle;
+    return sortConfig.direction === "asc" ? SORT_ICONS.asc : SORT_ICONS.desc;
+  };
+
+  const renderSortableHeader = (label, key) => (
+    <button type="button" className="sort-header-button" onClick={() => toggleSort(key)}>
+      <span>{label}</span>
+      <span className="sort-header-icon">{getSortIcon(key)}</span>
+    </button>
+  );
+
   const handleAdd = () => {
     setEditingContract(null);
     setIsViewMode(false);
@@ -234,20 +308,12 @@ function Contracts() {
     setShowAddEdit(true);
   };
 
-  const isEditableContract = (contract) => {
-    const status = getContractStatus(contract);
-    return canContribute && String(contract.created_by) === String(currentUserId) && ["draft", "rejected"].includes(status);
+  const openSubmitModal = (targets, prompt) => {
+    setSubmitTargets(targets);
+    setSubmitPrompt(prompt);
+    setConfirmProgressMessage("");
+    setShowSubmitConfirm(true);
   };
-
-  const submittableContracts = displayedContracts.filter(isEditableContract);
-  const pendingReviewContracts = displayedContracts.filter((contract) => getContractStatus(contract) === "submitted");
-
-  const totalPages = Math.max(1, Math.ceil(displayedContracts.length / PAGE_SIZE));
-  const paginatedContracts = displayedContracts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const pageWindow = Array.from({ length: totalPages }, (_, index) => index + 1).filter(
-    (page) => page >= currentPage - 2 && page <= currentPage + 2
-  );
-  const weeklyContractTotal = displayedContracts.reduce((sum, contract) => sum + Number(contract.total_value || 0), 0);
 
   const handleSave = async (data) => {
     try {
@@ -298,18 +364,24 @@ function Contracts() {
   };
 
   const handleSubmitContracts = async () => {
+    if (submitTargets.length === 0) {
+      return;
+    }
+
     setIsSubmittingContracts(true);
 
     try {
-      for (const [index, contract] of submittableContracts.entries()) {
-        setConfirmProgressMessage(`Submitting contract ${index + 1} of ${submittableContracts.length}...`);
+      for (const [index, contract] of submitTargets.entries()) {
+        setConfirmProgressMessage(`Submitting contract ${index + 1} of ${submitTargets.length}...`);
         await submitContract(contract.id, { submitted_by: currentUserId });
       }
 
       await loadData();
       setShowSubmitConfirm(false);
+      setSubmitTargets([]);
+      setSubmitPrompt("");
       setConfirmProgressMessage("");
-      setResultMessage("Contracts submitted.");
+      setResultMessage(submitTargets.length === 1 ? "Contract submitted." : "Contracts submitted.");
       setShowResult(true);
     } catch (err) {
       console.error("Failed to submit contracts:", err);
@@ -365,65 +437,42 @@ function Contracts() {
 
   return (
     <div className="contracts-page">
-      <Header title="Contracts" showBack />
+      <Header title="Contracts" subtitle={clientName ? `Client: ${clientName}` : ""} showBack />
       <div className="divider" />
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "12px",
-          flexWrap: "wrap",
-          marginBottom: "16px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+      <div className="tracking-toolbar">
+        <div className="tracking-toolbar-group">
           <Button variant="secondary" onClick={() => setSelectedDate(toDateInputValue(addDays(weekStart, -7)))}>
             {"<"}
           </Button>
           <div>
             <strong>Week of {weekLabel}</strong>
-            <div style={{ fontSize: "0.9rem", color: "#4b5563" }}>Showing contracts where the selected day falls between start and end.</div>
+            <div className="tracking-toolbar-note">Showing contracts where the selected day falls between start and end.</div>
           </div>
           <Button variant="secondary" onClick={() => setSelectedDate(toDateInputValue(addDays(weekStart, 7)))}>
             {">"}
           </Button>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-          {canReview ? (
-            <>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <label htmlFor="contracts-sort">Sort by</label>
-                <select id="contracts-sort" value={reviewSort} onChange={(event) => setReviewSort(event.target.value)}>
-                  <option value="recent">Most Recent</option>
-                  <option value="employee-asc">Employee A-Z</option>
-                  <option value="employee-desc">Employee Z-A</option>
-                  <option value="date-desc">Start Date</option>
-                </select>
-              </div>
-
-              {visibleEmployeeOptions.length > 1 ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <label htmlFor="contracts-employee-filter">Employee</label>
-                  <select
-                    id="contracts-employee-filter"
-                    value={selectedEmployeeId}
-                    onChange={(event) => setSelectedEmployeeId(event.target.value)}
-                  >
-                    <option value="all">All Employees</option>
-                    {visibleEmployeeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
-            </>
+        <div className="tracking-toolbar-group">
+          {canReview && visibleEmployeeOptions.length > 1 ? (
+            <div className="tracking-toolbar-group">
+              <label htmlFor="contracts-employee-filter">Employee</label>
+              <select
+                id="contracts-employee-filter"
+                value={selectedEmployeeId}
+                onChange={(event) => setSelectedEmployeeId(event.target.value)}
+              >
+                <option value="all">All Employees</option>
+                {visibleEmployeeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           ) : null}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <div className="tracking-toolbar-group">
             <label htmlFor="contracts-week-picker">Jump to week</label>
             <input
               id="contracts-week-picker"
@@ -435,7 +484,7 @@ function Contracts() {
         </div>
       </div>
 
-      <div style={{ marginBottom: "12px", fontWeight: 600 }}>Weekly total: {weeklyContractTotal.toFixed(2)}</div>
+      <div className="tracking-total">Contract Totals: {formatCurrency(contractTotal)}</div>
 
       {error ? (
         <div className="error-box">
@@ -453,14 +502,14 @@ function Contracts() {
             <table>
               <thead>
                 <tr>
-                  {canReview ? <th>Employee</th> : null}
-                  <th>Contract Name</th>
-                  <th>Total Value</th>
-                  <th>Start</th>
-                  <th>End</th>
-                  <th>Status</th>
-                  <th>Rejection Note</th>
-                  <th></th>
+                  {canReview ? <th>{renderSortableHeader("Employee", "employee")}</th> : null}
+                  <th>{renderSortableHeader("Contract Name", "contract_name")}</th>
+                  <th>{renderSortableHeader("Total Value", "total_value")}</th>
+                  <th>{renderSortableHeader("Start", "start_date")}</th>
+                  <th>{renderSortableHeader("End", "end_date")}</th>
+                  <th>{renderSortableHeader("Status", "status")}</th>
+                  <th>{renderSortableHeader("Rejection Note", "rejection_note")}</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -477,7 +526,7 @@ function Contracts() {
                       <tr key={contract.id}>
                         {canReview ? <td>{getOwnerLabel(contract)}</td> : null}
                         <td>{contract.contract_name}</td>
-                        <td>{contract.total_value}</td>
+                        <td>{formatCurrency(contract.total_value)}</td>
                         <td>{formatDate(contract.start_date)}</td>
                         <td>{formatDate(contract.end_date)}</td>
                         <td style={{ textTransform: "capitalize" }}>{status}</td>
@@ -490,6 +539,9 @@ function Contracts() {
                             <>
                               <Button variant="primary" onClick={() => handleEdit(contract)}>
                                 Edit
+                              </Button>
+                              <Button variant="secondary" onClick={() => openSubmitModal([contract], "Submit this contract for review?")}>
+                                Submit
                               </Button>
                               <Button variant="danger" onClick={() => handleDelete(contract)}>
                                 Delete
@@ -549,12 +601,15 @@ function Contracts() {
           ) : null}
 
           {canContribute ? (
-            <div className="add-container" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <Button variant="primary" pop onClick={handleAdd}>
+            <div className="page-actions">
+              <Button variant="primary" onClick={handleAdd}>
                 Add
               </Button>
               {submittableContracts.length > 0 ? (
-                <Button variant="primary" pop onClick={() => setShowSubmitConfirm(true)}>
+                <Button
+                  variant="primary"
+                  onClick={() => openSubmitModal(submittableContracts, "Submit all draft and rejected contracts in this week for review?")}
+                >
                   Submit Week
                 </Button>
               ) : null}
@@ -562,7 +617,7 @@ function Contracts() {
           ) : null}
 
           {canReview && pendingReviewContracts.length > 0 ? (
-            <div style={{ marginTop: "16px", color: "#374151" }}>
+            <div className="pending-review-note">
               {pendingReviewContracts.length} submitted contract{pendingReviewContracts.length === 1 ? "" : "s"} waiting for review.
             </div>
           ) : null}
@@ -589,11 +644,13 @@ function Contracts() {
 
       {showSubmitConfirm ? (
         <ConfirmModal
-          message="Submit all draft and rejected contracts in this week for review?"
+          message={submitPrompt}
           onConfirm={handleSubmitContracts}
           onCancel={() => {
             if (!isSubmittingContracts) {
               setShowSubmitConfirm(false);
+              setSubmitTargets([]);
+              setSubmitPrompt("");
               setConfirmProgressMessage("");
             }
           }}
@@ -656,8 +713,3 @@ function Contracts() {
 }
 
 export default Contracts;
-
-
-
-
-

@@ -74,3 +74,21 @@ td {
   align-items: center;
   flex-wrap: wrap;
 }
+
+.sort-header-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    color: inherit;
+}
+
+.sort-header-icon {
+    color: #8b0000;
+    font-size: 0.95em;
+}

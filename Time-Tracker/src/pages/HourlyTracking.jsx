@@ -10,6 +10,7 @@ import Button from "../components/Button";
 
 import {
   getHours,
+  getClients,
   createHourEntry,
   updateHourEntry,
   softDeleteHour,
@@ -25,6 +26,11 @@ import "../css/hourlytracking.css";
 const CONTRIBUTOR_ROLES = ["Hourly", "Employee"];
 const PAGE_SIZE = 15;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
+const SORT_ICONS = {
+  asc: "\u2191",
+  desc: "\u2193",
+  idle: "\u2195",
+};
 
 const toDateInputValue = (value) => {
   const date = new Date(value);
@@ -54,6 +60,8 @@ const formatWeekLabel = (start, end) => {
   return `${startLabel} - ${endLabel}`;
 };
 
+const formatCurrency = (value) => `$${Number(value || 0).toFixed(2)}`;
+
 const getEntryStatus = (entry) => {
   const normalizedStatus = String(entry.status || "").toLowerCase().trim();
 
@@ -68,23 +76,18 @@ const getEntryStatus = (entry) => {
   return normalizedStatus || "draft";
 };
 
-const getSortTime = (record) => {
-  const value = record.updated_at || record.created_at || record.work_date;
-  const time = new Date(value).getTime();
-  return Number.isNaN(time) ? 0 : time;
-};
-
 const getSubmitterLabel = (entry) => entry.user_name || entry.submitted_by_name || `User ${entry.user_id}`;
 
 function HourlyTracking() {
   const { clientId } = useParams();
-  const { role, users, currentUserId, managedUserIds, canAccessFeature, isManagerLike, loadingUsers } = useRole();
+  const { role, currentUserId, managedUserIds, canAccessFeature, isManagerLike, loadingUsers } = useRole();
 
   const [entries, setEntries] = useState([]);
+  const [clientName, setClientName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [debugError, setDebugError] = useState("");
-  const [reviewSort, setReviewSort] = useState("recent");
+  const [sortConfig, setSortConfig] = useState({ key: "work_date", direction: "desc" });
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("all");
 
   const [showAddEdit, setShowAddEdit] = useState(false);
@@ -94,6 +97,8 @@ function HourlyTracking() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState(null);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [submitTargets, setSubmitTargets] = useState([]);
+  const [submitPrompt, setSubmitPrompt] = useState("");
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewAction, setReviewAction] = useState("approved");
   const [reviewNote, setReviewNote] = useState("");
@@ -135,13 +140,21 @@ function HourlyTracking() {
     setError("");
 
     try {
-      const data = await getHours({
-        client_id: clientId,
-        viewer_role: role,
-        viewer_user_id: currentUserId,
-      });
+      const [hoursData, clientsData] = await Promise.all([
+        getHours({
+          client_id: clientId,
+          viewer_role: role,
+          viewer_user_id: currentUserId,
+        }),
+        getClients({
+          mode: "hourly",
+          viewer_role: role,
+          viewer_user_id: currentUserId,
+        }),
+      ]);
 
-      const safeEntries = Array.isArray(data) ? data : [];
+      const safeEntries = Array.isArray(hoursData) ? hoursData : [];
+      const safeClients = Array.isArray(clientsData) ? clientsData : [];
       const visibleUserIds = role === "Admin"
         ? null
         : role === "Manager"
@@ -159,7 +172,10 @@ function HourlyTracking() {
           return visibleUserIds.some((userId) => String(userId) === String(entry.user_id));
         });
 
+      const matchingClient = safeClients.find((client) => String(client.id) === String(clientId));
+
       setEntries(filteredEntries);
+      setClientName(matchingClient?.client_name || filteredEntries[0]?.client_name || "");
       setCurrentPage(1);
     } catch (err) {
       console.error("Failed to load hours:", err);
@@ -171,27 +187,51 @@ function HourlyTracking() {
     }
   };
 
+  const getSortValue = (entry, key) => {
+    switch (key) {
+      case "submitted_by":
+        return getSubmitterLabel(entry).toLowerCase();
+      case "work_date":
+        return parseDateOnly(entry.work_date).getTime();
+      case "hours_worked":
+        return Number(entry.hours_worked || 0);
+      case "is_billable":
+        return entry.is_billable ? 1 : 0;
+      case "status":
+        return getEntryStatus(entry);
+      case "rejection_note":
+        return String(entry.rejection_note || "").toLowerCase();
+      case "notes":
+        return String(entry.notes || "").toLowerCase();
+      default:
+        return String(entry[key] || "").toLowerCase();
+    }
+  };
+
   const sortedEntries = useMemo(() => {
     const sorted = [...entries];
 
     sorted.sort((left, right) => {
-      if (reviewSort === "employee-asc") {
-        return getSubmitterLabel(left).localeCompare(getSubmitterLabel(right)) || getSortTime(right) - getSortTime(left);
+      const leftValue = getSortValue(left, sortConfig.key);
+      const rightValue = getSortValue(right, sortConfig.key);
+
+      let comparison = 0;
+
+      if (typeof leftValue === "number" && typeof rightValue === "number") {
+        comparison = leftValue - rightValue;
+      } else {
+        comparison = String(leftValue).localeCompare(String(rightValue));
       }
 
-      if (reviewSort === "employee-desc") {
-        return getSubmitterLabel(right).localeCompare(getSubmitterLabel(left)) || getSortTime(right) - getSortTime(left);
+      if (comparison === 0) {
+        comparison = Number(right.id || 0) - Number(left.id || 0);
       }
 
-      if (reviewSort === "date-desc") {
-        return parseDateOnly(right.work_date) - parseDateOnly(left.work_date) || getSortTime(right) - getSortTime(left);
-      }
-
-      return getSortTime(right) - getSortTime(left) || Number(right.id || 0) - Number(left.id || 0);
+      return sortConfig.direction === "asc" ? comparison : -comparison;
     });
 
     return sorted;
-  }, [entries, reviewSort]);
+  }, [entries, sortConfig]);
 
   const visibleEmployeeOptions = useMemo(() => {
     const options = new Map();
@@ -224,6 +264,41 @@ function HourlyTracking() {
     return sortedEntries.filter((entry) => String(entry.user_id) === String(selectedEmployeeId));
   }, [selectedEmployeeId, sortedEntries]);
 
+  const isEditableEntry = (entry) => {
+    const status = getEntryStatus(entry);
+    return canContribute && String(entry.user_id) === String(currentUserId) && ["draft", "rejected"].includes(status);
+  };
+
+  const pendingReviewEntries = displayedEntries.filter((entry) => getEntryStatus(entry) === "submitted");
+  const submittableEntries = displayedEntries.filter(isEditableEntry);
+
+  const totalPages = Math.max(1, Math.ceil(displayedEntries.length / PAGE_SIZE));
+  const paginatedEntries = displayedEntries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageWindow = Array.from({ length: totalPages }, (_, index) => index + 1).filter(
+    (page) => page >= currentPage - 2 && page <= currentPage + 2
+  );
+  const weeklyTotal = displayedEntries.reduce((sum, entry) => sum + Number(entry.hours_worked || 0), 0);
+
+  const toggleSort = (key) => {
+    setSortConfig((current) => (
+      current.key === key
+        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: "asc" }
+    ));
+  };
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return SORT_ICONS.idle;
+    return sortConfig.direction === "asc" ? SORT_ICONS.asc : SORT_ICONS.desc;
+  };
+
+  const renderSortableHeader = (label, key) => (
+    <button type="button" className="sort-header-button" onClick={() => toggleSort(key)}>
+      <span>{label}</span>
+      <span className="sort-header-icon">{getSortIcon(key)}</span>
+    </button>
+  );
+
   const handleAdd = () => {
     setEditingEntry(null);
     setIsViewMode(false);
@@ -242,27 +317,30 @@ function HourlyTracking() {
     setShowAddEdit(true);
   };
 
-  const isEditableEntry = (entry) => {
-    const status = getEntryStatus(entry);
-    return canContribute && String(entry.user_id) === String(currentUserId) && ["draft", "rejected"].includes(status);
+  const openSubmitModal = (targets, prompt) => {
+    setSubmitTargets(targets);
+    setSubmitPrompt(prompt);
+    setConfirmProgressMessage("");
+    setShowSubmitConfirm(true);
   };
 
-  const pendingReviewEntries = displayedEntries.filter((entry) => getEntryStatus(entry) === "submitted");
-  const submittableEntries = displayedEntries.filter(isEditableEntry);
+  const handleDelete = (entry) => {
+    setEntryToDelete(entry);
+    setShowDeleteModal(true);
+  };
 
-  const totalPages = Math.max(1, Math.ceil(displayedEntries.length / PAGE_SIZE));
-  const paginatedEntries = displayedEntries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const pageWindow = Array.from({ length: totalPages }, (_, index) => index + 1).filter(
-    (page) => page >= currentPage - 2 && page <= currentPage + 2
-  );
-  const weeklyTotal = displayedEntries.reduce((sum, entry) => sum + Number(entry.hours_worked || 0), 0);
-
-  const resetReviewModal = () => {
-    setShowReviewModal(false);
-    setEntryToReview(null);
-    setReviewNote("");
-    setReviewScope("single");
-    setConfirmProgressMessage("");
+  const confirmDelete = async () => {
+    try {
+      await softDeleteHour(entryToDelete.id);
+      await loadEntries();
+      setShowDeleteModal(false);
+      setResultMessage("Entry deleted.");
+      setShowResult(true);
+    } catch (err) {
+      console.error("Failed to delete entry:", err);
+      setError("Unable to delete entry. Please try again.");
+      setDebugError(String(err?.message || err));
+    }
   };
 
   const handleSave = async (data) => {
@@ -293,38 +371,25 @@ function HourlyTracking() {
     }
   };
 
-  const handleDelete = (entry) => {
-    setEntryToDelete(entry);
-    setShowDeleteModal(true);
-  };
-
-  const confirmDelete = async () => {
-    try {
-      await softDeleteHour(entryToDelete.id);
-      await loadEntries();
-      setShowDeleteModal(false);
-      setResultMessage("Entry deleted.");
-      setShowResult(true);
-    } catch (err) {
-      console.error("Failed to delete entry:", err);
-      setError("Unable to delete entry. Please try again.");
-      setDebugError(String(err?.message || err));
-    }
-  };
-
   const handleSubmitHours = async () => {
+    if (submitTargets.length === 0) {
+      return;
+    }
+
     setIsSubmittingHours(true);
 
     try {
-      for (const [index, entry] of submittableEntries.entries()) {
-        setConfirmProgressMessage(`Submitting entry ${index + 1} of ${submittableEntries.length}...`);
+      for (const [index, entry] of submitTargets.entries()) {
+        setConfirmProgressMessage(`Submitting entry ${index + 1} of ${submitTargets.length}...`);
         await markHourSubmitted(entry.id, { submitted_by: currentUserId });
       }
 
       await loadEntries();
       setShowSubmitConfirm(false);
+      setSubmitTargets([]);
+      setSubmitPrompt("");
       setConfirmProgressMessage("");
-      setResultMessage("Hours submitted successfully.");
+      setResultMessage(submitTargets.length === 1 ? "Hour entry submitted successfully." : "Hours submitted successfully.");
       setShowResult(true);
     } catch (err) {
       console.error("Failed to submit hours:", err);
@@ -333,6 +398,14 @@ function HourlyTracking() {
     } finally {
       setIsSubmittingHours(false);
     }
+  };
+
+  const resetReviewModal = () => {
+    setShowReviewModal(false);
+    setEntryToReview(null);
+    setReviewNote("");
+    setReviewScope("single");
+    setConfirmProgressMessage("");
   };
 
   const openReviewModal = (entry, action, scope = "single") => {
@@ -397,65 +470,42 @@ function HourlyTracking() {
 
   return (
     <div className="timeTracker">
-      <Header title="Hourly Tracking" showBack />
+      <Header title="Hourly Tracking" subtitle={clientName ? `Client: ${clientName}` : ""} showBack />
       <div className="divider" />
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "12px",
-          flexWrap: "wrap",
-          marginBottom: "16px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+      <div className="tracking-toolbar">
+        <div className="tracking-toolbar-group">
           <Button variant="secondary" onClick={() => setSelectedDate(toDateInputValue(addDays(weekStart, -7)))}>
             {"<"}
           </Button>
           <div>
             <strong>Week of {weekLabel}</strong>
-            <div style={{ fontSize: "0.9rem", color: "#4b5563" }}>Showing entries within the selected week.</div>
+            <div className="tracking-toolbar-note">Showing entries within the selected week.</div>
           </div>
           <Button variant="secondary" onClick={() => setSelectedDate(toDateInputValue(addDays(weekStart, 7)))}>
             {">"}
           </Button>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-          {canReview ? (
-            <>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <label htmlFor="hourly-sort">Sort by</label>
-                <select id="hourly-sort" value={reviewSort} onChange={(event) => setReviewSort(event.target.value)}>
-                  <option value="recent">Most Recent</option>
-                  <option value="employee-asc">Employee A-Z</option>
-                  <option value="employee-desc">Employee Z-A</option>
-                  <option value="date-desc">Date Worked</option>
-                </select>
-              </div>
-
-              {visibleEmployeeOptions.length > 1 ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <label htmlFor="hourly-employee-filter">Employee</label>
-                  <select
-                    id="hourly-employee-filter"
-                    value={selectedEmployeeId}
-                    onChange={(event) => setSelectedEmployeeId(event.target.value)}
-                  >
-                    <option value="all">All Employees</option>
-                    {visibleEmployeeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
-            </>
+        <div className="tracking-toolbar-group">
+          {canReview && visibleEmployeeOptions.length > 1 ? (
+            <div className="tracking-toolbar-group">
+              <label htmlFor="hourly-employee-filter">Employee</label>
+              <select
+                id="hourly-employee-filter"
+                value={selectedEmployeeId}
+                onChange={(event) => setSelectedEmployeeId(event.target.value)}
+              >
+                <option value="all">All Employees</option>
+                {visibleEmployeeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           ) : null}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <div className="tracking-toolbar-group">
             <label htmlFor="hourly-week-picker">Jump to week</label>
             <input
               id="hourly-week-picker"
@@ -467,7 +517,7 @@ function HourlyTracking() {
         </div>
       </div>
 
-      <div style={{ marginBottom: "12px", fontWeight: 600 }}>Weekly total: {weeklyTotal.toFixed(2)} hours</div>
+      <div className="tracking-total">Weekly Total: {formatCurrency(weeklyTotal)}</div>
 
       {error && (
         <div className="error-box">
@@ -482,7 +532,7 @@ function HourlyTracking() {
       {!loading && !loadingUsers && !error && (
         <>
           {canReview && pendingReviewEntries.length > 0 ? (
-            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
+            <div className="bulk-review-actions">
               <Button variant="complete" onClick={() => openReviewModal(null, "approved", "all")}>
                 Approve All
               </Button>
@@ -495,14 +545,14 @@ function HourlyTracking() {
           <table>
             <thead>
               <tr>
-                {canReview ? <th>Submitted By</th> : null}
-                <th>Date Worked</th>
-                <th>Hours</th>
-                <th>Billable</th>
-                <th>Status</th>
-                <th>Rejection Note</th>
-                <th>Notes</th>
-                <th></th>
+                {canReview ? <th>{renderSortableHeader("Submitted By", "submitted_by")}</th> : null}
+                <th>{renderSortableHeader("Date Worked", "work_date")}</th>
+                <th>{renderSortableHeader("Hours", "hours_worked")}</th>
+                <th>{renderSortableHeader("Billable", "is_billable")}</th>
+                <th>{renderSortableHeader("Status", "status")}</th>
+                <th>{renderSortableHeader("Rejection Note", "rejection_note")}</th>
+                <th>{renderSortableHeader("Notes", "notes")}</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -532,6 +582,9 @@ function HourlyTracking() {
                           <>
                             <Button variant="primary" onClick={() => handleEdit(entry)}>
                               Edit
+                            </Button>
+                            <Button variant="secondary" onClick={() => openSubmitModal([entry], "Submit this hour entry for review?")}>
+                              Submit
                             </Button>
                             <Button variant="danger" onClick={() => handleDelete(entry)}>
                               Delete
@@ -587,12 +640,15 @@ function HourlyTracking() {
           ) : null}
 
           {canContribute ? (
-            <div className="add-container" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <Button variant="primary" pop onClick={handleAdd}>
+            <div className="page-actions">
+              <Button variant="primary" onClick={handleAdd}>
                 Add
               </Button>
               {submittableEntries.length > 0 ? (
-                <Button variant="primary" pop onClick={() => setShowSubmitConfirm(true)}>
+                <Button
+                  variant="primary"
+                  onClick={() => openSubmitModal(submittableEntries, "Submit all draft and rejected hours in this week for review?")}
+                >
                   Submit Week
                 </Button>
               ) : null}
@@ -600,7 +656,7 @@ function HourlyTracking() {
           ) : null}
 
           {canReview && pendingReviewEntries.length > 0 ? (
-            <div style={{ marginTop: "16px", color: "#374151" }}>
+            <div className="pending-review-note">
               {pendingReviewEntries.length} submitted entr{pendingReviewEntries.length === 1 ? "y" : "ies"} waiting for review.
             </div>
           ) : null}
@@ -627,11 +683,13 @@ function HourlyTracking() {
 
       {showSubmitConfirm ? (
         <ConfirmModal
-          message="Submit all draft and rejected hours in this week for review?"
+          message={submitPrompt}
           onConfirm={handleSubmitHours}
           onCancel={() => {
             if (!isSubmittingHours) {
               setShowSubmitConfirm(false);
+              setSubmitTargets([]);
+              setSubmitPrompt("");
               setConfirmProgressMessage("");
             }
           }}
@@ -701,7 +759,3 @@ function HourlyTracking() {
 }
 
 export default HourlyTracking;
-
-
-
-
