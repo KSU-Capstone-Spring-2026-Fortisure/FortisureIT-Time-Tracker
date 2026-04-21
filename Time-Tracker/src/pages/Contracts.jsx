@@ -83,7 +83,7 @@ function Contracts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [debugError, setDebugError] = useState("");
-  const [sortConfig, setSortConfig] = useState({ key: "start_date", direction: "desc" });
+  const [sortConfig, setSortConfig] = useState({ key: "recent", direction: "desc" });
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("all");
 
   const [showAddEdit, setShowAddEdit] = useState(false);
@@ -188,6 +188,8 @@ function Contracts() {
     switch (key) {
       case "employee":
         return getOwnerLabel(contract).toLowerCase();
+      case "recent":
+        return new Date(contract.updated_at || contract.created_at || 0).getTime();
       case "contract_name":
         return String(contract.contract_name || "").toLowerCase();
       case "total_value":
@@ -252,6 +254,10 @@ function Contracts() {
       setSelectedEmployeeId("all");
     }
   }, [selectedEmployeeId, visibleEmployeeOptions]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortConfig, selectedEmployeeId]);
 
   const displayedContracts = useMemo(() => {
     if (selectedEmployeeId === "all") {

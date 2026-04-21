@@ -19,6 +19,26 @@ function sendError(res, err, route) {
   });
 }
 
+function validateContractPayload({ contract_name, start_date, end_date }) {
+  if (!String(contract_name || "").trim()) {
+    const error = new Error("A contract name is required.");
+    error.status = 400;
+    throw error;
+  }
+
+  if (!String(start_date || "").trim()) {
+    const error = new Error("A start date is required.");
+    error.status = 400;
+    throw error;
+  }
+
+  if (!String(end_date || "").trim()) {
+    const error = new Error("An end date is required.");
+    error.status = 400;
+    throw error;
+  }
+}
+
 router.get("/contracts", async (req, res) => {
   const viewerRole = String(req.query.viewer_role || "").toLowerCase();
   const viewerUserId = Number(req.query.viewer_user_id) || null;
@@ -139,6 +159,8 @@ router.put("/contracts/:id", async (req, res) => {
   const { contract_name, description, start_date, end_date, total_value } = req.body;
 
   try {
+    validateContractPayload({ contract_name, start_date, end_date });
+
     const result = await pool.query(
       `UPDATE contracts
        SET contract_name = $1,
@@ -167,6 +189,8 @@ router.put("/contracts/:id", async (req, res) => {
 
 router.put("/contracts/:id/submit", async (req, res) => {
   try {
+    validateContractPayload({ contract_name, start_date, end_date });
+
     const result = await pool.query(
       `UPDATE contracts
        SET status = 'submitted',

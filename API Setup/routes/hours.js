@@ -35,6 +35,14 @@ function validateHoursWorked(hoursWorked) {
   }
 }
 
+function validateWorkDate(workDate) {
+  if (!String(workDate || "").trim()) {
+    const error = new Error("A work date is required.");
+    error.status = 400;
+    throw error;
+  }
+}
+
 router.get("/hours", async (req, res) => {
   const viewerRole = String(req.query.viewer_role || "").toLowerCase();
   const viewerUserId = Number(req.query.viewer_user_id) || null;
@@ -111,6 +119,7 @@ router.post("/hours", async (req, res) => {
   const { user_id, client_id, work_date, hours_worked, notes, is_billable } = req.body;
 
   try {
+    validateWorkDate(work_date);
     validateHoursWorked(hours_worked);
 
     const result = await pool.query(
@@ -148,6 +157,7 @@ router.put("/hours/:id", async (req, res) => {
   const { work_date, hours_worked, notes, is_billable } = req.body;
 
   try {
+    validateWorkDate(work_date);
     validateHoursWorked(hours_worked);
 
     const result = await pool.query(

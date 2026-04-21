@@ -11,6 +11,7 @@ function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
     start_date: "",
     end_date: "",
   });
+  const [validationError, setValidationError] = useState("");
 
   useEffect(() => {
     if (record) {
@@ -34,9 +35,26 @@ function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
 
   const update = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setValidationError("");
   };
 
   const handleSubmit = async () => {
+    if (!form.contract_name.trim()) {
+      setValidationError("A contract name is required.");
+      return;
+    }
+
+    if (!form.start_date) {
+      setValidationError("A start date is required.");
+      return;
+    }
+
+    if (!form.end_date) {
+      setValidationError("An end date is required.");
+      return;
+    }
+
+    setValidationError("");
     await onSave(form);
   };
 
@@ -83,6 +101,8 @@ function AddEditContractModal({ isOpen, record, isViewMode, onSave, onClose }) {
             <input type="date" disabled={isViewMode} value={form.end_date} onChange={(e) => update("end_date", e.target.value)} />
           </div>
         </div>
+
+        {validationError ? <p style={{ color: "#b91c1c", fontWeight: 600 }}>{validationError}</p> : null}
 
         {!isViewMode ? (
           <div className="modal-footer spaced">

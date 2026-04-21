@@ -262,6 +262,10 @@ function HourlyTracking() {
     }
   }, [selectedEmployeeId, visibleEmployeeOptions]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortConfig, selectedEmployeeId]);
+
   const displayedEntries = useMemo(() => {
     if (selectedEmployeeId === "all") {
       return sortedEntries;
