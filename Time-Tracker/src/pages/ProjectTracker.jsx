@@ -17,7 +17,7 @@ function ProjectTracker() {
       : null,
     canAccessFeature(role, "reporting")
       ? {
-          title: "Reporting",
+          title: "Reporting (Coming Soon)",
           icon: "\uD83D\uDCC8",
           path: "/reporting",
         }
@@ -39,7 +39,7 @@ function ProjectTracker() {
       : null,
     canAccessFeature(role, "documentation")
       ? {
-          title: "Documentation (Coming Soon)",
+          title: "Documentation",
           icon: "\uD83D\uDCD8",
           path: "/documentation",
         }

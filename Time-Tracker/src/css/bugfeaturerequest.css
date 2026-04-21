@@ -10,7 +10,7 @@
 
 .bug-container {
     background: white;
-    width: 700px;
+    width: min(980px, 100%);
     padding: 30px;
     border-radius: 8px;
 
@@ -89,4 +89,13 @@
 .sort-header-icon {
     color: #8b0000;
     font-size: 0.95em;
+}
+
+.bug-container table {
+    table-layout: fixed;
+}
+
+.bug-container td,
+.bug-container th {
+    vertical-align: top;
 }

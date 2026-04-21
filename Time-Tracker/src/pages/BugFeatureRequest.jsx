@@ -23,6 +23,16 @@ const SORT_ICONS = {
   desc: "\u2193",
   idle: "\u2195",
 };
+const SEVERITY_ORDER = {
+  low: 1,
+  medium: 2,
+  high: 3,
+  critical: 4,
+};
+const BUG_STATUS_ORDER = {
+  open: 1,
+  complete: 2,
+};
 
 function BugFeatureRequest() {
   const { role, isManagerLike, currentUserId, loadingUsers } = useRole();
@@ -204,9 +214,9 @@ function BugFeatureRequest() {
     const getSortValue = (item) => {
       switch (sortConfig.key) {
         case "severity":
-          return String(item.severity || "").toLowerCase();
+          return SEVERITY_ORDER[String(item.severity || "").toLowerCase()] || 0;
         case "status":
-          return String(item.completed ? "complete" : item.status || "open").toLowerCase();
+          return BUG_STATUS_ORDER[String(item.completed ? "complete" : item.status || "open").toLowerCase()] || 0;
         case "description":
           return String(item.description || "").toLowerCase();
         case "title":
@@ -216,8 +226,14 @@ function BugFeatureRequest() {
     };
 
     mappedRows.sort((left, right) => {
-      const comparison = getSortValue(left).localeCompare(getSortValue(right)) || Number(right.id || 0) - Number(left.id || 0);
-      return sortConfig.direction === "asc" ? comparison : -comparison;
+      const leftValue = getSortValue(left);
+      const rightValue = getSortValue(right);
+      const comparison = typeof leftValue === "number" && typeof rightValue === "number"
+        ? leftValue - rightValue
+        : String(leftValue).localeCompare(String(rightValue));
+      
+      const stableComparison = comparison || Number(right.id || 0) - Number(left.id || 0);
+      return sortConfig.direction === "asc" ? stableComparison : -stableComparison;
     });
 
     return mappedRows;

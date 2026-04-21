@@ -26,6 +26,13 @@ const SORT_ICONS = {
   desc: "\u2193",
   idle: "\u2195",
 };
+const MILESTONE_STATUS_ORDER = {
+  open: 1,
+  submitted: 2,
+  approved: 3,
+  rejected: 4,
+  completed: 5,
+};
 
 const formatDate = (value) => {
   if (!value) return "";
@@ -107,7 +114,7 @@ function Milestones() {
         case "due_date":
           return new Date(milestone.due_date || 0).getTime();
         case "status":
-          return getMilestoneStatus(milestone);
+          return MILESTONE_STATUS_ORDER[getMilestoneStatus(milestone)] || 0;
         case "description":
         default:
           return String(milestone[sortConfig.key] || "").toLowerCase();
