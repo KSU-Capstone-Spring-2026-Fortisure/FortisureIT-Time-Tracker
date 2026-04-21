@@ -68,9 +68,16 @@
 }
 
 .icon-cell .btn {
-    margin-right: 8px;
+    margin-right: 0;
 }
 
 .icon-cell .btn:last-child {
     margin-right: 0;
+}
+
+.icon-cell {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
 }

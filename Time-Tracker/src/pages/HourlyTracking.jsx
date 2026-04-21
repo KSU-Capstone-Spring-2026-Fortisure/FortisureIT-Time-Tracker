@@ -31,6 +31,12 @@ const SORT_ICONS = {
   desc: "\u2193",
   idle: "\u2195",
 };
+const HOURLY_STATUS_ORDER = {
+  draft: 1,
+  submitted: 2,
+  approved: 3,
+  rejected: 4,
+};
 
 const toDateInputValue = (value) => {
   const date = new Date(value);
@@ -198,7 +204,7 @@ function HourlyTracking() {
       case "is_billable":
         return entry.is_billable ? 1 : 0;
       case "status":
-        return getEntryStatus(entry);
+        return HOURLY_STATUS_ORDER[getEntryStatus(entry)] || 0;
       case "rejection_note":
         return String(entry.rejection_note || "").toLowerCase();
       case "notes":
@@ -583,7 +589,7 @@ function HourlyTracking() {
                             <Button variant="primary" onClick={() => handleEdit(entry)}>
                               Edit
                             </Button>
-                            <Button variant="secondary" onClick={() => openSubmitModal([entry], "Submit this hour entry for review?")}>
+                            <Button variant="complete" onClick={() => openSubmitModal([entry], "Submit this hour entry for review?")}>
                               Submit
                             </Button>
                             <Button variant="danger" onClick={() => handleDelete(entry)}>

@@ -9,6 +9,7 @@ import Milestones from "./pages/Milestones";
 import BugFeatureRequest from "./pages/BugFeatureRequest";
 import Documentation from "./pages/Documentation";
 import Impersonation from "./pages/Impersonation";
+import Reporting from "./pages/Reporting";
 
 import { initializeTeams } from "./teams";
 import { getUiConfig } from "./services/api";
@@ -107,6 +108,14 @@ function AppContent() {
             <AdminToolsRoute>
               <Impersonation />
             </AdminToolsRoute>
+          }
+        />
+        <Route
+          path="reporting"
+          element={
+            <ProtectedRoute feature="reporting">
+              <Reporting />
+            </ProtectedRoute>
           }
         />
         <Route

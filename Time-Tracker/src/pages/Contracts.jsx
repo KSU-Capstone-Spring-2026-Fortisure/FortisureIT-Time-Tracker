@@ -28,6 +28,12 @@ const SORT_ICONS = {
   desc: "\u2193",
   idle: "\u2195",
 };
+const CONTRACT_STATUS_ORDER = {
+  draft: 1,
+  submitted: 2,
+  approved: 3,
+  rejected: 4,
+};
 
 const toDateInputValue = (value) => {
   const date = new Date(value);
@@ -191,7 +197,7 @@ function Contracts() {
       case "end_date":
         return parseDateOnly(contract.end_date || contract.start_date).getTime();
       case "status":
-        return getContractStatus(contract);
+        return CONTRACT_STATUS_ORDER[getContractStatus(contract)] || 0;
       case "rejection_note":
         return String(contract.rejection_note || "").toLowerCase();
       default:
@@ -540,7 +546,7 @@ function Contracts() {
                               <Button variant="primary" onClick={() => handleEdit(contract)}>
                                 Edit
                               </Button>
-                              <Button variant="secondary" onClick={() => openSubmitModal([contract], "Submit this contract for review?")}>
+                              <Button variant="complete" onClick={() => openSubmitModal([contract], "Submit this contract for review?")}>
                                 Submit
                               </Button>
                               <Button variant="danger" onClick={() => handleDelete(contract)}>
