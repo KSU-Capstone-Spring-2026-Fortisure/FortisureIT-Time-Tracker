@@ -3,7 +3,7 @@ import { useRole } from "../context/RoleContext";
 import "../css/header.css";
 import logo from "../assets/logo.png";
 
-function Header({ title, showBack = false }) {
+function Header({ title, subtitle = "", showBack = false }) {
   const navigate = useNavigate();
   const { currentUser, identityEmail, isImpersonating, impersonatorEmail, clearImpersonation } = useRole();
 
@@ -24,7 +24,10 @@ function Header({ title, showBack = false }) {
         <img src={logo} alt="Logo" className="logo-img" onClick={() => navigate("/")} />
       </div>
 
-      <h1 className="app-header-title">{title}</h1>
+      <div className="app-header-title-group">
+        <h1 className="app-header-title">{title}</h1>
+        {subtitle ? <div className="app-header-subtitle">{subtitle}</div> : null}
+      </div>
 
       <div className="app-header-right">
         <span className="user-pill">{identityLabel}</span>

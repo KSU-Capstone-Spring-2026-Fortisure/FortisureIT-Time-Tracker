@@ -1,0 +1,69 @@
+.impersonation-page {
+  padding-bottom: 24px;
+  background: #f4f4f4;
+  min-height: 100vh;
+}
+
+.impersonation-panel {
+  padding: 16px 24px 32px;
+}
+
+.impersonation-copy {
+  margin-bottom: 16px;
+  max-width: 820px;
+}
+
+.impersonation-actions {
+  margin-bottom: 16px;
+}
+
+.impersonation-table-shell {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.impersonation-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+.impersonation-table thead {
+  background: #f9fafb;
+}
+
+.impersonation-table th,
+.impersonation-table td {
+  text-align: left;
+  padding: 12px;
+}
+
+.impersonation-table tbody tr {
+  border-top: 1px solid #e5e7eb;
+}
+
+.impersonation-state {
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.sort-header-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  color: inherit;
+}
+
+.sort-header-icon {
+  color: #8b0000;
+  font-size: 0.95em;
+}

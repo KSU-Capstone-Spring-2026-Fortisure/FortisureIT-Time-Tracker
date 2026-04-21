@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import Header from "../components/Header";
 import ResultModal from "../components/ResultModal";
 import ConfirmModal from "../components/ConfirmModal";
+import DeleteModal from "../components/DeleteModal";
 import BugFeatureModal from "./shared/BugFeatureModal";
 import Button from "../components/Button";
 
@@ -11,13 +12,20 @@ import {
   createBug,
   updateBug,
   completeBug,
+  softDeleteBug,
 } from "../services/api";
 
 import { useRole } from "../context/RoleContext";
 import "../css/bugfeaturerequest.css";
 
+const SORT_ICONS = {
+  asc: "\u2191",
+  desc: "\u2193",
+  idle: "\u2195",
+};
+
 function BugFeatureRequest() {
-  const { role, isManagerLike, currentUser, currentUserId, loadingUsers } = useRole();
+  const { role, isManagerLike, currentUserId, loadingUsers } = useRole();
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({
     title: "",
@@ -32,6 +40,8 @@ function BugFeatureRequest() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [itemToComplete, setItemToComplete] = useState(null);
   const [isCompletingRequest, setIsCompletingRequest] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   const [showResult, setShowResult] = useState(false);
   const [resultMessage, setResultMessage] = useState("");
@@ -39,6 +49,7 @@ function BugFeatureRequest() {
   const [error, setError] = useState("");
   const [debugError, setDebugError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sortConfig, setSortConfig] = useState({ key: "title", direction: "asc" });
 
   const canComplete = isManagerLike(role);
 
@@ -123,6 +134,32 @@ function BugFeatureRequest() {
     }
   };
 
+  const handleDelete = (item) => {
+    setItemToDelete(item);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) {
+      return;
+    }
+
+    try {
+      await softDeleteBug(itemToDelete.id, {
+        viewer_user_id: currentUserId,
+      });
+      await loadBugs();
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+      setResultMessage("Request deleted.");
+      setShowResult(true);
+    } catch (err) {
+      console.error("Failed to delete request:", err);
+      setError("Unable to delete request.");
+      setDebugError(String(err?.message || err));
+    }
+  };
+
   const handleSubmit = async () => {
     setIsSavingRequest(true);
 
@@ -158,12 +195,50 @@ function BugFeatureRequest() {
   };
 
   const rows = useMemo(() => {
-    return items.map((item) => ({
+    const mappedRows = items.map((item) => ({
       ...item,
-      canEdit: !canComplete && String(item.user_id) === String(currentUserId),
+      canEdit: String(item.user_id) === String(currentUserId) && !item.completed,
       canComplete,
     }));
-  }, [canComplete, currentUserId, items]);
+
+    const getSortValue = (item) => {
+      switch (sortConfig.key) {
+        case "severity":
+          return String(item.severity || "").toLowerCase();
+        case "status":
+          return String(item.completed ? "complete" : item.status || "open").toLowerCase();
+        case "description":
+          return String(item.description || "").toLowerCase();
+        case "title":
+        default:
+          return String(item.title || "").toLowerCase();
+      }
+    };
+
+    mappedRows.sort((left, right) => {
+      const comparison = getSortValue(left).localeCompare(getSortValue(right)) || Number(right.id || 0) - Number(left.id || 0);
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    });
+
+    return mappedRows;
+  }, [canComplete, currentUserId, items, sortConfig]);
+
+  const toggleSort = (key) => {
+    setSortConfig((current) => (
+      current.key === key
+        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: "asc" }
+    ));
+  };
+
+  const renderSortableHeader = (label, key) => (
+    <button type="button" className="sort-header-button" onClick={() => toggleSort(key)}>
+      <span>{label}</span>
+      <span className="sort-header-icon">
+        {sortConfig.key === key ? (sortConfig.direction === "asc" ? SORT_ICONS.asc : SORT_ICONS.desc) : SORT_ICONS.idle}
+      </span>
+    </button>
+  );
 
   if (error) {
     return (
@@ -196,11 +271,11 @@ function BugFeatureRequest() {
               <table>
                 <thead>
                   <tr>
-                    <th>Title</th>
-                    <th>Severity</th>
-                    <th>Status</th>
-                    <th>Description</th>
-                    <th></th>
+                    <th>{renderSortableHeader("Title", "title")}</th>
+                    <th>{renderSortableHeader("Severity", "severity")}</th>
+                    <th>{renderSortableHeader("Status", "status")}</th>
+                    <th>{renderSortableHeader("Description", "description")}</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -219,6 +294,11 @@ function BugFeatureRequest() {
                           {item.canEdit ? (
                             <Button variant="primary" pop onClick={() => handleEdit(item)}>
                               Edit
+                            </Button>
+                          ) : null}
+                          {item.canEdit ? (
+                            <Button variant="danger" pop onClick={() => handleDelete(item)}>
+                              Delete
                             </Button>
                           ) : null}
                           {item.canComplete && !item.completed ? (
@@ -262,6 +342,17 @@ function BugFeatureRequest() {
           isLoading={isCompletingRequest}
           loadingMessage={isCompletingRequest ? "Updating request..." : ""}
           confirmLabel={isCompletingRequest ? "Updating..." : "Confirm"}
+        />
+      )}
+
+      {showDeleteModal && (
+        <DeleteModal
+          isOpen={showDeleteModal}
+          onCancel={() => {
+            setShowDeleteModal(false);
+            setItemToDelete(null);
+          }}
+          onConfirm={confirmDelete}
         />
       )}
 

@@ -30,13 +30,26 @@
   color: black;
 }
 
-.app-header-title {
+.app-header-title-group {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-header-title {
   font-size: 28px;
   margin: 0;
-  text-align: center;
+}
+
+.app-header-subtitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #6b7280;
 }
 
 .app-header-right {
@@ -79,11 +92,14 @@
     align-items: flex-start;
   }
 
-  .app-header-title {
+  .app-header-title-group {
     position: static;
     transform: none;
     flex: 1;
     text-align: center;
+  }
+
+  .app-header-title {
     font-size: 24px;
   }
 

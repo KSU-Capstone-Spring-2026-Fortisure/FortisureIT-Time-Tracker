@@ -85,6 +85,8 @@ router.put("/requests/:id", async (req, res) => {
            modified_date = NOW()
        WHERE id = $4
          AND user_id = $5
+         AND COALESCE(completed, false) IS NOT TRUE
+         AND is_deleted IS NOT TRUE
        RETURNING *`,
       [
         normalize(title),
@@ -94,6 +96,12 @@ router.put("/requests/:id", async (req, res) => {
         viewer_user_id,
       ]
     );
+
+    if (result.rows.length === 0) {
+      return res.status(403).json({
+        error: "Only the user who created this request can edit it while it is still open.",
+      });
+    }
 
     res.json(result.rows);
   } catch (err) {
@@ -119,6 +127,34 @@ router.put("/requests/:id/complete", async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     sendError(res, err, "/requests/:id/complete (PUT)");
+  }
+});
+
+router.put("/requests/:id/delete", async (req, res) => {
+  const { viewer_user_id } = req.body;
+
+  try {
+    const result = await pool.query(
+      `UPDATE bug_feature_requests
+       SET is_deleted = true,
+           modified_date = NOW()
+       WHERE id = $1
+         AND user_id = $2
+         AND COALESCE(completed, false) IS NOT TRUE
+         AND is_deleted IS NOT TRUE
+       RETURNING *`,
+      [req.params.id, viewer_user_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(403).json({
+        error: "Only the user who created this request can delete it while it is still open.",
+      });
+    }
+
+    res.json(result.rows);
+  } catch (err) {
+    sendError(res, err, "/requests/:id/delete (PUT)");
   }
 });
 
