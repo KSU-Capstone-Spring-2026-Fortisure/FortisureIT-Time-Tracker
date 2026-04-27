@@ -66,8 +66,6 @@ const formatWeekLabel = (start, end) => {
   return `${startLabel} - ${endLabel}`;
 };
 
-const formatCurrency = (value) => `$${Number(value || 0).toFixed(2)}`;
-
 const getEntryStatus = (entry) => {
   const normalizedStatus = String(entry.status || "").toLowerCase().trim();
 
@@ -527,7 +525,7 @@ function HourlyTracking() {
         </div>
       </div>
 
-      <div className="tracking-total">Weekly Total: {formatCurrency(weeklyTotal)}</div>
+      <div className="tracking-total">Weekly Total: {Number(weeklyTotal || 0).toFixed(2)}</div>
 
       {error && (
         <div className="error-box">
